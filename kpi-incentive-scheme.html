@@ -292,6 +292,11 @@ let currentView = 'dashboard';
 let currentMonth = new Date();
 let adminEntryStaffId = null;
 let entryFreqFilter = 'daily';
+let teamSummaryDeptFilter = 'all';
+let reportType = 'staff'; // 'staff' | 'team' | 'kpis' | 'assignments'
+let kpiReportCadenceFilter = 'all';
+let asgReportDeptFilter = 'all';
+let asgReportStaffFilter = 'all';
 
 function uid(prefix){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
 function monthKey(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'); }
@@ -684,6 +689,7 @@ function navItems(){
   if(session.isAdmin){
     return [
       ['dashboard','Overview'],
+      ['teamSummary','Team Summary'],
       ['entry','Monthly Entry'],
       ['staff','Staff'],
       ['kpis','KPI Library'],
@@ -744,12 +750,13 @@ async function renderShell(){
 
   const titleMap = {
     dashboard: session.isAdmin ? ['Overview','Daily/weekly compliance, plus monthly achievement & incentive'] : ['My Performance','Your KPI achievement and incentive standing'],
+    teamSummary: ['Team Summary','Overall team performance at a glance — printable for management'],
     entry: session.isAdmin ? ['Monthly Entry','Record actuals for any staff member'] : ['Update My KPIs',"Enter this month's actuals for your assigned KPIs"],
     staff: ['Staff','Add and manage staff records'],
     kpis: ['KPI Library','Define the KPIs used across the scheme'],
     assignments: ['Assignments & Weightage','Assign KPIs to each staff member with weightage and monthly targets'],
     slabs: ['Incentive Slabs','Map achievement % to incentive % — by slab group'],
-    reports: ['Reports','Printable KPI & incentive report for a staff member, month, or your whole team'],
+    reports: ['Reports','Printable reports — staff, team summary, KPI library and assignments — with filters'],
     settings: ['Settings','Deadline rules and console configuration']
   };
   wrap.querySelector('#view-title').textContent = titleMap[currentView][0];
@@ -758,6 +765,7 @@ async function renderShell(){
   const content = wrap.querySelector('#content');
   const renderers = {
     dashboard: renderDashboard,
+    teamSummary: renderTeamSummary,
     entry: renderEntry,
     staff: renderStaffAdmin,
     kpis: renderKpiAdmin,
@@ -934,6 +942,129 @@ function renderComplianceSnapshot(){
   return panel;
 }
 
+/* ============================= TEAM SUMMARY ============================= */
+// Aggregates every staff member's monthly result into team-level numbers:
+// average achievement/incentive, a distribution across the same ok/warn/bad
+// bands used everywhere else, and a per-department roll-up — the "how's the
+// whole team doing" view management actually asked for, as opposed to the
+// per-staff Overview table.
+function computeTeamSummary(monthDate, deptFilter){
+  const staffList = DB.staff.filter(s=> s.active!==false && (!deptFilter || deptFilter==='all' || (s.department||'—')===deptFilter));
+  const rows = staffList.map(s=>{
+    const res = staffMonthlyResult(s.id, monthDate);
+    const tier = incentiveForScore(s.slabGroup||'Default', res.overall);
+    return {staff:s, res, tier};
+  });
+  const assessed = rows.filter(r=>r.res.overall!==null);
+  const avgAchievement = assessed.length ? assessed.reduce((s,r)=>s+r.res.overall,0)/assessed.length : null;
+  const avgIncentive = assessed.length ? assessed.reduce((s,r)=> s + (r.tier?r.tier.incentivePct:0),0)/assessed.length : null;
+  const tierCounts = {ok:0, warn:0, bad:0, none:0};
+  rows.forEach(r=>{
+    if(r.res.overall===null) tierCounts.none++;
+    else tierCounts[tierClass(r.res.overall)]++;
+  });
+  const byDept = {};
+  rows.forEach(r=>{
+    const d = r.staff.department || 'Unassigned';
+    if(!byDept[d]) byDept[d] = {count:0, sum:0, assessedCount:0, incentiveSum:0};
+    byDept[d].count++;
+    if(r.res.overall!==null){ byDept[d].sum += r.res.overall; byDept[d].assessedCount++; byDept[d].incentiveSum += (r.tier?r.tier.incentivePct:0); }
+  });
+  const deptRows = Object.keys(byDept).sort().map(d=>{
+    const b = byDept[d];
+    return {dept:d, count:b.count, avgAchievement: b.assessedCount? b.sum/b.assessedCount : null, avgIncentive: b.assessedCount? b.incentiveSum/b.assessedCount : null};
+  });
+  rows.sort((a,b)=>{
+    const av = a.res.overall===null? -1 : a.res.overall;
+    const bv = b.res.overall===null? -1 : b.res.overall;
+    return bv-av;
+  });
+  return {rows, avgAchievement, avgIncentive, tierCounts, deptRows, headcount: rows.length};
+}
+
+function buildTeamSummaryPanel(monthDate, deptFilter){
+  const sum = computeTeamSummary(monthDate, deptFilter);
+  const panel = el(`<div class="panel" id="team-summary-panel" style="max-width:900px;"></div>`);
+  panel.appendChild(reportLetterhead('Team Performance Summary', `${monthLabel(monthDate)} · ${deptFilter && deptFilter!=='all' ? deptFilter : 'All departments'}`));
+
+  const stats = el(`<div class="score-hero" style="margin-bottom:20px;">
+    <div><div class="big" style="font-size:38px; color:${sum.avgAchievement===null?'#94A3A0':(sum.avgAchievement>=100?'var(--teal)':sum.avgAchievement>=80?'var(--brass)':'var(--rust)')}">${sum.avgAchievement===null?'—':round1(sum.avgAchievement)+'%'}</div><div class="label">Team average achievement</div></div>
+    <div class="divider"></div>
+    <div class="stat"><div class="num" style="font-size:22px;">${sum.avgIncentive===null?'—':round1(sum.avgIncentive)+'%'}</div><div class="lbl">Team average incentive</div></div>
+    <div class="divider"></div>
+    <div class="stat"><div class="num" style="font-size:22px;">${sum.headcount}</div><div class="lbl">Staff in scope</div></div>
+  </div>`);
+  panel.appendChild(stats);
+
+  panel.appendChild(el(`<div style="margin-bottom:20px;">
+    <div class="small-muted" style="margin-bottom:6px; font-weight:600;">Achievement distribution</div>
+    <div class="row" style="gap:8px;">
+      <span class="tag ok">Met/exceeded target: ${sum.tierCounts.ok}</span>
+      <span class="tag warn">Near target (80–99%): ${sum.tierCounts.warn}</span>
+      <span class="tag bad">Below threshold: ${sum.tierCounts.bad}</span>
+      <span class="tag neutral">Not yet entered: ${sum.tierCounts.none}</span>
+    </div>
+  </div>`));
+
+  if(sum.deptRows.length){
+    panel.appendChild(el(`<h3 style="font-size:14px; margin:0 0 8px 0;">By department</h3>`));
+    const deptTable = el(`<table style="margin-bottom:20px;"><thead><tr><th>Department</th><th>Staff</th><th>Avg achievement</th><th>Avg incentive</th></tr></thead><tbody></tbody></table>`);
+    const dtbody = deptTable.querySelector('tbody');
+    sum.deptRows.forEach(d=>{
+      dtbody.appendChild(el(`<tr>
+        <td>${d.dept}</td>
+        <td class="mono">${d.count}</td>
+        <td>${d.avgAchievement===null?'<span class="small-muted">not entered</span>':`<span class="tag ${tierClass(d.avgAchievement)}">${round1(d.avgAchievement)}%</span>`}</td>
+        <td class="mono">${d.avgIncentive===null?'—':round1(d.avgIncentive)+'%'}</td>
+      </tr>`));
+    });
+    panel.appendChild(deptTable);
+  }
+
+  panel.appendChild(el(`<h3 style="font-size:14px; margin:0 0 8px 0;">All staff — ranked by achievement</h3>`));
+  const staffTable = el(`<table><thead><tr><th>Rank</th><th>Name</th><th>Role</th><th>Department</th><th>Achievement</th><th>Incentive</th></tr></thead><tbody></tbody></table>`);
+  const stbody = staffTable.querySelector('tbody');
+  if(sum.rows.length===0){
+    stbody.appendChild(el(`<tr><td colspan="6" class="small-muted" style="text-align:center; padding:16px;">No staff in scope.</td></tr>`));
+  } else {
+    sum.rows.forEach((r,i)=>{
+      stbody.appendChild(el(`<tr>
+        <td class="mono">${i+1}</td>
+        <td><strong>${r.staff.name}</strong></td>
+        <td>${r.staff.role||'—'}</td>
+        <td>${r.staff.department||'—'}</td>
+        <td>${r.res.overall===null?'<span class="small-muted">not entered</span>':`<span class="tag ${tierClass(r.res.overall)}">${round1(r.res.overall)}%</span>`}</td>
+        <td class="mono">${r.tier && r.res.overall!==null? r.tier.incentivePct+'%':'—'}</td>
+      </tr>`));
+    });
+  }
+  panel.appendChild(staffTable);
+  return panel;
+}
+
+function renderTeamSummary(root){
+  root.innerHTML = '';
+  root.appendChild(renderMonthPicker(()=>renderShell()));
+
+  const depts = Array.from(new Set(DB.staff.map(s=>s.department).filter(Boolean))).sort();
+  const controls = el(`<div class="panel no-print">
+    <div class="row" style="align-items:flex-end;">
+      <div class="field"><label>Department</label>
+        <select id="ts-dept">
+          <option value="all">All departments</option>
+          ${depts.map(d=>`<option value="${d}" ${d===teamSummaryDeptFilter?'selected':''}>${d}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field"><button class="btn brass" id="ts-print">Print / Save as PDF</button></div>
+    </div>
+  </div>`);
+  root.appendChild(controls);
+  controls.querySelector('#ts-dept').onchange = (e)=>{ teamSummaryDeptFilter = e.target.value; renderShell(); };
+  controls.querySelector('#ts-print').onclick = ()=>window.print();
+
+  root.appendChild(buildTeamSummaryPanel(currentMonth, teamSummaryDeptFilter));
+}
+
 function gaugeCard(line){
   const pct = line.pct;
   const clampPct = pct===null? 0 : Math.max(0, Math.min(pct,150));
@@ -988,7 +1119,7 @@ function renderMonthPicker(onChange){
   return wrap;
 }
 
-/* ============================= PRINTABLE REPORT ============================= */
+/* ============================= PRINTABLE REPORTS ============================= */
 function typeLabelFor(kpi){
   if(!kpi) return '—';
   if(kpi.type==='completion') return 'Qualitative';
@@ -996,28 +1127,35 @@ function typeLabelFor(kpi){
   return 'Quantitative (target)';
 }
 
+// Shared header block for every printable report: logo, org name, report
+// title/subtitle, and a generated timestamp — kept in one place so all
+// reports look and update consistently.
+function reportLetterhead(title, subtitle){
+  return el(`<div style="border-bottom:2px solid var(--frame); padding-bottom:12px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:flex-end;">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <img src="${LOGO_DATA_URI}" alt="${(DB.config.orgName||'').toUpperCase()} logo" style="width:44px; height:44px; object-fit:contain;">
+      <div>
+        <div class="small-muted mono" style="letter-spacing:.1em;">${(DB.config.orgName||'').toUpperCase()}</div>
+        <h2 style="margin:4px 0 0 0; font-size:19px;">${title}</h2>
+        ${subtitle ? `<div class="small-muted" style="margin-top:2px;">${subtitle}</div>` : ''}
+      </div>
+    </div>
+    <div class="small-muted" style="text-align:right;">Generated ${fmtDate(new Date().toISOString())}</div>
+  </div>`);
+}
+
 function buildReportPanel(staffId, monthDate){
   const staff = DB.staff.find(s=>s.id===staffId);
   const res = staffMonthlyResult(staffId, monthDate);
   const tier = incentiveForScore(staff?.slabGroup||'Default', res.overall);
-  const panel = el(`<div class="panel" id="report-panel" style="max-width:900px;">
-    <div style="border-bottom:2px solid var(--frame); padding-bottom:12px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:flex-end;">
-      <div style="display:flex; align-items:center; gap:12px;">
-        <img src="${LOGO_DATA_URI}" alt="${(DB.config.orgName||'').toUpperCase()} logo" style="width:44px; height:44px; object-fit:contain;">
-        <div>
-          <div class="small-muted mono" style="letter-spacing:.1em;">${(DB.config.orgName||'').toUpperCase()}</div>
-          <h2 style="margin:4px 0 0 0; font-size:19px;">Monthly KPI &amp; Incentive Report</h2>
-        </div>
-      </div>
-      <div class="small-muted" style="text-align:right;">Generated ${fmtDate(new Date().toISOString())}</div>
-    </div>
-    <div class="row" style="margin-bottom:6px;">
-      <div class="field" style="flex:1; min-width:150px;"><label>Staff member</label><div><strong>${staff?staff.name:'—'}</strong></div></div>
-      <div class="field" style="flex:1; min-width:150px;"><label>Role</label><div>${staff?staff.role:'—'}</div></div>
-      <div class="field" style="flex:1; min-width:150px;"><label>Department</label><div>${(staff&&staff.department)||'—'}</div></div>
-      <div class="field" style="flex:1; min-width:150px;"><label>Period</label><div>${monthLabel(monthDate)}</div></div>
-    </div>
-  </div>`);
+  const panel = el(`<div class="panel" id="report-panel" style="max-width:900px;"></div>`);
+  panel.appendChild(reportLetterhead('Monthly KPI &amp; Incentive Report'));
+  panel.appendChild(el(`<div class="row" style="margin-bottom:6px;">
+    <div class="field" style="flex:1; min-width:150px;"><label>Staff member</label><div><strong>${staff?staff.name:'—'}</strong></div></div>
+    <div class="field" style="flex:1; min-width:150px;"><label>Role</label><div>${staff?staff.role:'—'}</div></div>
+    <div class="field" style="flex:1; min-width:150px;"><label>Department</label><div>${(staff&&staff.department)||'—'}</div></div>
+    <div class="field" style="flex:1; min-width:150px;"><label>Period</label><div>${monthLabel(monthDate)}</div></div>
+  </div>`));
 
   const table = el(`<table><thead><tr><th>KPI</th><th>Cadence</th><th>Type</th><th>Weight %</th><th>Compliance</th><th>Achievement %</th></tr></thead><tbody></tbody></table>`);
   const tbody = table.querySelector('tbody');
@@ -1070,8 +1208,178 @@ function buildReportPanel(staffId, monthDate){
   return panel;
 }
 
+// Full KPI library as a printable list — every KPI's cadence, measurement
+// type, direction/unit, and who currently carries it, optionally filtered
+// to one cadence.
+function buildKpiLibraryReportPanel(cadenceFilter){
+  const panel = el(`<div class="panel" id="kpi-report-panel" style="max-width:900px;"></div>`);
+  panel.appendChild(reportLetterhead('KPI Library Summary', cadenceFilter && cadenceFilter!=='all' ? `${ {daily:'Daily',weekly:'Weekly',monthly:'Monthly'}[cadenceFilter] } KPIs only` : 'All KPIs'));
+  const kpis = DB.kpis.filter(k=> !cadenceFilter || cadenceFilter==='all' || (k.frequency||'monthly')===cadenceFilter);
+  const table = el(`<table><thead><tr><th>KPI</th><th>Cadence</th><th>Measured as</th><th>Direction / Unit</th><th>Assigned to</th></tr></thead><tbody></tbody></table>`);
+  const tbody = table.querySelector('tbody');
+  if(kpis.length===0){
+    tbody.appendChild(el(`<tr><td colspan="5" class="small-muted" style="text-align:center; padding:16px;">No KPIs match this filter.</td></tr>`));
+  } else {
+    kpis.forEach(k=>{
+      const freq = k.frequency||'monthly', type = k.type||'value';
+      const holders = DB.staff.filter(s=> (DB.assignments[s.id]||[]).some(a=>a.kpiId===k.id)).map(s=>s.name);
+      const measured = type==='completion' ? 'Qualitative' : type==='banded' ? 'Quantitative — banded' : 'Quantitative — vs target';
+      const dirUnit = type==='value' ? (k.direction==='lower'?'Lower is better':'Higher is better')+(k.unit?` (${k.unit})`:'') : (k.unit || '—');
+      tbody.appendChild(el(`<tr>
+        <td><strong>${k.name}</strong></td>
+        <td>${ {daily:'Daily',weekly:'Weekly',monthly:'Monthly'}[freq] }</td>
+        <td>${measured}</td>
+        <td>${dirUnit}</td>
+        <td class="small-muted">${holders.length ? holders.join(', ') : '— unassigned —'}</td>
+      </tr>`));
+    });
+  }
+  panel.appendChild(table);
+  return panel;
+}
+
+// Every staff member's KPI assignments and weightage in one printable sheet,
+// grouped by staff, optionally filtered to a department or a single person.
+function buildAssignmentsReportPanel(deptFilter, staffFilterId){
+  const panel = el(`<div class="panel" id="asg-report-panel" style="max-width:900px;"></div>`);
+  let subtitle = 'All staff';
+  if(staffFilterId && staffFilterId!=='all'){
+    const s = DB.staff.find(x=>x.id===staffFilterId);
+    subtitle = s ? s.name : 'All staff';
+  } else if(deptFilter && deptFilter!=='all'){
+    subtitle = deptFilter;
+  }
+  panel.appendChild(reportLetterhead('KPI Assignments &amp; Weightage', subtitle));
+
+  let staffList = DB.staff.filter(s=> s.active!==false);
+  if(staffFilterId && staffFilterId!=='all') staffList = staffList.filter(s=>s.id===staffFilterId);
+  else if(deptFilter && deptFilter!=='all') staffList = staffList.filter(s=>(s.department||'—')===deptFilter);
+
+  if(staffList.length===0){
+    panel.appendChild(el(`<div class="empty">No staff match this filter.</div>`));
+    return panel;
+  }
+
+  staffList.forEach(s=>{
+    const assigns = DB.assignments[s.id] || [];
+    const block = el(`<div style="margin-bottom:22px;">
+      <div style="font-weight:600; font-size:13.5px; margin-bottom:4px;">${s.name} <span class="small-muted" style="font-weight:400;">— ${s.role||''}${s.department?' · '+s.department:''}</span></div>
+    </div>`);
+    if(assigns.length===0){
+      block.appendChild(el(`<div class="small-muted" style="font-size:12.5px;">No KPIs assigned.</div>`));
+    } else {
+      const table = el(`<table><thead><tr><th>KPI</th><th>Cadence</th><th>Weight %</th><th>Target</th></tr></thead><tbody></tbody></table>`);
+      const tbody = table.querySelector('tbody');
+      let totalW = 0;
+      assigns.forEach(a=>{
+        const kpi = DB.kpis.find(k=>k.id===a.kpiId);
+        const type = kpi ? (kpi.type||'value') : 'value';
+        totalW += Number(a.weightage)||0;
+        tbody.appendChild(el(`<tr>
+          <td>${kpi?kpi.name:'Unknown'}</td>
+          <td>${kpi ? ({daily:'Daily',weekly:'Weekly',monthly:'Monthly'}[kpi.frequency||'monthly']) : '—'}</td>
+          <td class="mono">${a.weightage}%</td>
+          <td>${type!=='value' ? '<span class="small-muted">—</span>' : (a.target+(kpi?kpi.unit:''))}</td>
+        </tr>`));
+      });
+      tbody.appendChild(el(`<tr><td colspan="2" class="small-muted" style="text-align:right;">Total weight</td><td class="mono"><strong>${totalW}%</strong></td><td></td></tr>`));
+      block.appendChild(table);
+    }
+    panel.appendChild(block);
+  });
+  return panel;
+}
+
 function renderReports(root){
   root.innerHTML = '';
+  const tabsWrap = el(`<div class="toggle-row no-print" style="max-width:680px; margin-bottom:16px;"></div>`);
+  [['staff','Staff Monthly Report'],['team','Team Summary'],['kpis','KPI Library'],['assignments','Assignments & Weightage']].forEach(([key,label])=>{
+    const b = el(`<button>${label}</button>`);
+    if(key===reportType) b.classList.add('active');
+    b.onclick = ()=>{ reportType = key; renderShell(); };
+    tabsWrap.appendChild(b);
+  });
+  root.appendChild(tabsWrap);
+
+  if(reportType==='team'){
+    const depts = Array.from(new Set(DB.staff.map(s=>s.department).filter(Boolean))).sort();
+    const controls = el(`<div class="panel no-print">
+      <div class="row" style="align-items:flex-end;">
+        <div class="field"><label>Period</label>
+          <div class="month-nav">
+            <button id="rep-prev">‹</button>
+            <div class="mtitle">${monthLabel(currentMonth)}</div>
+            <button id="rep-next">›</button>
+          </div>
+        </div>
+        <div class="field"><label>Department</label>
+          <select id="rep-dept">
+            <option value="all">All departments</option>
+            ${depts.map(d=>`<option value="${d}" ${d===teamSummaryDeptFilter?'selected':''}>${d}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field"><button class="btn brass" id="rep-print">Print / Save as PDF</button></div>
+      </div>
+    </div>`);
+    root.appendChild(controls);
+    controls.querySelector('#rep-prev').onclick = ()=>{ currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth()-1, 1); renderShell(); };
+    controls.querySelector('#rep-next').onclick = ()=>{ currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth()+1, 1); renderShell(); };
+    controls.querySelector('#rep-dept').onchange = (e)=>{ teamSummaryDeptFilter = e.target.value; renderShell(); };
+    controls.querySelector('#rep-print').onclick = ()=>window.print();
+    root.appendChild(buildTeamSummaryPanel(currentMonth, teamSummaryDeptFilter));
+    return;
+  }
+
+  if(reportType==='kpis'){
+    const controls = el(`<div class="panel no-print">
+      <div class="row" style="align-items:flex-end;">
+        <div class="field"><label>Cadence</label>
+          <select id="rep-cadence">
+            <option value="all">All cadences</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </div>
+        <div class="field"><button class="btn brass" id="rep-print">Print / Save as PDF</button></div>
+      </div>
+    </div>`);
+    root.appendChild(controls);
+    controls.querySelector('#rep-cadence').value = kpiReportCadenceFilter;
+    controls.querySelector('#rep-cadence').onchange = (e)=>{ kpiReportCadenceFilter = e.target.value; renderShell(); };
+    controls.querySelector('#rep-print').onclick = ()=>window.print();
+    root.appendChild(buildKpiLibraryReportPanel(kpiReportCadenceFilter));
+    return;
+  }
+
+  if(reportType==='assignments'){
+    const depts = Array.from(new Set(DB.staff.map(s=>s.department).filter(Boolean))).sort();
+    const controls = el(`<div class="panel no-print">
+      <div class="row" style="align-items:flex-end;">
+        <div class="field"><label>Department</label>
+          <select id="rep-dept">
+            <option value="all">All departments</option>
+            ${depts.map(d=>`<option value="${d}" ${d===asgReportDeptFilter?'selected':''}>${d}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field"><label>Staff member</label>
+          <select id="rep-staff-f">
+            <option value="all">All in scope</option>
+            ${DB.staff.map(s=>`<option value="${s.id}" ${s.id===asgReportStaffFilter?'selected':''}>${s.name}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field"><button class="btn brass" id="rep-print">Print / Save as PDF</button></div>
+      </div>
+    </div>`);
+    root.appendChild(controls);
+    controls.querySelector('#rep-dept').onchange = (e)=>{ asgReportDeptFilter = e.target.value; asgReportStaffFilter = 'all'; renderShell(); };
+    controls.querySelector('#rep-staff-f').onchange = (e)=>{ asgReportStaffFilter = e.target.value; renderShell(); };
+    controls.querySelector('#rep-print').onclick = ()=>window.print();
+    root.appendChild(buildAssignmentsReportPanel(asgReportDeptFilter, asgReportStaffFilter));
+    return;
+  }
+
+  // default: reportType === 'staff'
   if(DB.staff.length===0){
     root.appendChild(el(`<div class="empty">Add staff first under the Staff section.</div>`));
     return;
