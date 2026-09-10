@@ -1,0 +1,2180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KPI Incentive Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --frame:#0F2A3D;
+    --frame-2:#173C54;
+    --frame-line:#2A4E63;
+    --paper:#F1F5F3;
+    --paper-2:#E1EAE7;
+    --ink:#16242A;
+    --ink-soft:#55666B;
+    --brass:#2E8B6B;
+    --brass-dim:#236B52;
+    --teal:#2C6E8E;
+    --teal-dim:#20536C;
+    --rust:#B14A3A;
+    --paper-text:#E6EEEC;
+    --ok:#2C6E8E;
+    --warn:#2E8B6B;
+    --bad:#B14A3A;
+    --radius:3px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    font-family:'IBM Plex Sans',sans-serif;
+    background:var(--frame);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  #app{display:flex; height:100vh; overflow:hidden;}
+
+  /* ---------- SIDEBAR ---------- */
+  .sidebar{
+    width:230px;
+    flex:none;
+    height:100vh;
+    overflow-y:auto;
+    background:var(--frame);
+    color:var(--paper-text);
+    display:flex;
+    flex-direction:column;
+    border-right:1px solid var(--frame-line);
+  }
+  .brand{
+    padding:22px 20px 16px 20px;
+    border-bottom:1px solid var(--frame-line);
+  }
+  .brand .mark{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:.14em;
+    color:var(--brass);
+  }
+  .brand h1{
+    font-size:17px;
+    margin:6px 0 2px 0;
+    font-weight:600;
+    line-height:1.25;
+  }
+  .brand .org{
+    font-size:12px;
+    color:#8FA6B0;
+  }
+  nav.navlist{padding:10px 10px; flex:1;}
+  .navlist button{
+    width:100%;
+    text-align:left;
+    background:transparent;
+    border:none;
+    color:#B7CBD1;
+    font-family:inherit;
+    font-size:13.5px;
+    padding:10px 12px;
+    border-radius:var(--radius);
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:2px;
+  }
+  .navlist button .dot{
+    width:6px;height:6px;border-radius:50%;
+    background:#33505E; flex:none;
+  }
+  .navlist button:hover{background:var(--frame-2); color:#fff;}
+  .navlist button.active{background:var(--frame-2); color:#fff;}
+  .navlist button.active .dot{background:var(--brass);}
+  .sidebar-foot{
+    padding:14px 20px 18px 20px;
+    border-top:1px solid var(--frame-line);
+    font-size:12px;
+    color:#8FA6B0;
+  }
+  .sidebar-foot .who{color:#E6EEEC; font-weight:600; font-size:13px;}
+  .sidebar-foot button{
+    margin-top:10px;
+    background:none;border:1px solid var(--frame-line);
+    color:#B7CBD1; padding:6px 10px; border-radius:var(--radius);
+    font-family:inherit; font-size:12px; cursor:pointer;
+  }
+  .sidebar-foot button:hover{border-color:var(--brass); color:var(--brass);}
+
+  /* ---------- MAIN ---------- */
+  .main{flex:1; height:100vh; background:var(--paper); min-width:0; display:flex; flex-direction:column; overflow:hidden;}
+  .topbar{
+    flex:none;
+    padding:18px 32px;
+    border-bottom:1px solid var(--paper-2);
+    display:flex; align-items:baseline; justify-content:space-between;
+    background:var(--paper);
+  }
+  .topbar h2{margin:0; font-size:20px; font-weight:600;}
+  .topbar .sub{color:var(--ink-soft); font-size:13px; margin-top:2px;}
+  .content{padding:26px 32px 60px 32px; flex:1; overflow-y:auto;}
+
+  /* ---------- Common bits ---------- */
+  .panel{
+    background:#fff;
+    border:1px solid var(--paper-2);
+    border-radius:var(--radius);
+    padding:20px;
+    margin-bottom:20px;
+  }
+  .panel h3{margin:0 0 14px 0; font-size:14px; font-weight:600; color:var(--ink);}
+  .panel .hint{font-size:12px; color:var(--ink-soft); margin-top:-8px; margin-bottom:14px;}
+  .row{display:flex; gap:12px; flex-wrap:wrap;}
+  .field{display:flex; flex-direction:column; gap:5px; margin-bottom:12px;}
+  .field label{font-size:11.5px; color:var(--ink-soft); font-weight:600; letter-spacing:.01em;}
+  input, select{
+    font-family:inherit; font-size:13.5px;
+    padding:8px 10px; border:1px solid #B9CAC5; border-radius:var(--radius);
+    background:#fff; color:var(--ink);
+  }
+  input:focus, select:focus{outline:2px solid var(--brass); outline-offset:0; border-color:var(--brass);}
+  button.btn{
+    font-family:inherit; font-size:13px; font-weight:600;
+    padding:9px 16px; border-radius:var(--radius); border:1px solid var(--frame);
+    background:var(--frame); color:#fff; cursor:pointer;
+  }
+  button.btn:hover{background:var(--frame-2);}
+  button.btn.brass{background:var(--brass); border-color:var(--brass-dim); color:#0B2130;}
+  button.btn.brass:hover{background:var(--brass-dim);}
+  button.btn.ghost{background:transparent; color:var(--ink); border-color:#B9CAC5;}
+  button.btn.ghost:hover{border-color:var(--ink);}
+  button.btn.danger{background:transparent; color:var(--rust); border-color:var(--rust);}
+  button.btn.danger:hover{background:var(--rust); color:#fff;}
+  button.btn.small{padding:5px 10px; font-size:12px;}
+
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th{
+    text-align:left; font-size:11px; letter-spacing:.03em; color:var(--ink-soft);
+    font-weight:600; padding:8px 10px; border-bottom:1px solid var(--paper-2);
+  }
+  td{padding:9px 10px; border-bottom:1px solid #E7EEEC; vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  .tag{
+    display:inline-block; padding:2px 8px; border-radius:20px; font-size:11px;
+    font-weight:600; font-family:'IBM Plex Mono',monospace;
+  }
+  .tag.ok{background:#DCEAF0; color:var(--teal-dim);}
+  .tag.warn{background:#DDEEE6; color:var(--brass-dim);}
+  .tag.bad{background:#F5E2DE; color:var(--rust);}
+  .tag.neutral{background:#E7ECEA; color:#5B6B67;}
+  .empty{
+    padding:30px 20px; text-align:center; color:var(--ink-soft);
+    border:1px dashed #cfc9ba; border-radius:var(--radius); font-size:13px;
+  }
+
+  /* ---------- Login / Setup ---------- */
+  .center-screen{
+    min-height:100vh; width:100%; display:flex; align-items:center; justify-content:center;
+    background:var(--frame);
+  }
+  .login-card{
+    width:380px; background:var(--paper); border-radius:4px; padding:34px 32px; position:relative;
+  }
+  .login-card:before{
+    content:""; position:absolute; top:0; left:0; right:0; height:4px; background:var(--brass);
+  }
+  .login-card .mark{font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.14em; color:var(--brass-dim);}
+  .login-card h1{font-size:20px; margin:8px 0 4px 0;}
+  .login-card p{font-size:13px; color:var(--ink-soft); margin:0 0 20px 0;}
+  .toggle-row{display:flex; gap:8px; margin-bottom:18px;}
+  .toggle-row button{
+    flex:1; padding:8px; border-radius:var(--radius); border:1px solid #B9CAC5; background:#fff;
+    font-family:inherit; font-size:12.5px; font-weight:600; cursor:pointer; color:var(--ink-soft);
+  }
+  .toggle-row button.active{background:var(--frame); color:#fff; border-color:var(--frame);}
+
+  /* ---------- Gauges ---------- */
+  .gauge-grid{display:flex; gap:16px; flex-wrap:wrap;}
+  .gauge-card{
+    width:150px; background:#fff; border:1px solid var(--paper-2); border-radius:var(--radius);
+    padding:14px 12px; text-align:center;
+  }
+  .gauge-card .kpi-name{font-size:11.5px; font-weight:600; color:var(--ink); min-height:30px; margin-top:6px;}
+  .gauge-card .kpi-detail{font-size:10.5px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace;}
+  .gauge-num{font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:19px;}
+
+  .score-hero{
+    display:flex; align-items:center; gap:28px; flex-wrap:wrap;
+  }
+  .score-hero .big{
+    font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:52px; line-height:1;
+  }
+  .score-hero .label{font-size:12px; color:var(--ink-soft); margin-top:4px;}
+  .score-hero .divider{width:1px; align-self:stretch; background:var(--paper-2);}
+  .score-hero .stat .num{font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:22px;}
+  .score-hero .stat .lbl{font-size:11px; color:var(--ink-soft);}
+
+  .weight-bar{height:8px; background:#E7ECEA; border-radius:4px; overflow:hidden; display:flex; margin-top:4px;}
+  .weight-bar span{display:block; height:100%;}
+
+  .badge-role{
+    font-family:'IBM Plex Mono',monospace; font-size:10.5px; padding:2px 7px; border-radius:2px;
+    background:var(--paper-2); color:var(--ink-soft);
+  }
+  .kpi-item{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:10px 0; border-bottom:1px solid #E7EEEC;
+  }
+  .kpi-item:last-child{border-bottom:none;}
+  .small-muted{font-size:11.5px; color:var(--ink-soft);}
+  ::placeholder{color:#8FA39C;}
+  .flex-end{display:flex; justify-content:flex-end; gap:8px; margin-top:6px;}
+  .month-nav{display:flex; align-items:center; gap:10px;}
+  .month-nav button{background:none;border:1px solid #B9CAC5; border-radius:var(--radius); width:28px; height:28px; cursor:pointer; font-size:14px;}
+  .month-nav .mtitle{font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:13px; min-width:110px; text-align:center;}
+
+  /* ---------- Print ---------- */
+  @media print{
+    html, body{ height:auto !important; overflow:visible !important; background:#fff; }
+    #app{ height:auto !important; overflow:visible !important; }
+    .sidebar, .topbar, .no-print{ display:none !important; }
+    .main{ height:auto !important; overflow:visible !important; background:#fff; }
+    .content{ height:auto !important; overflow:visible !important; padding:0; }
+    .panel{ border:none; box-shadow:none; padding:0; margin-bottom:18px; }
+    table{ font-size:12px; }
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* =========================================================================
+   KPI INCENTIVE CONSOLE
+   Data lives in a Google Sheet, via the Apps Script Web App you deploy
+   (see the accompanying kpi-incentive-backend.gs.txt). Fill in the two
+   constants below after you deploy it — everyone who opens this HTML file
+   talks to the same Sheet through that one API.
+   ========================================================================= */
+
+const API_URL = "https://script.google.com/macros/s/AKfycbxZ3pM7npM0zKySJeUvNTv9pOS2emeNkS8gm92OyiYRWPFJ-A6RSO10c7X7qTdYmR7K/exec"; // ends in /exec
+const API_SECRET = "744710"; // must match SECRET in the Apps Script
+
+let adminAuthPin = null; // the currently-logged-in admin's passcode, sent with every write
+
+const LOGO_DATA_URI = "data:image/jpeg;base64,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";
+
+const KEYS = {
+  config: 'config',
+  staff: 'staff',
+  kpis: 'kpi-library',
+  assignments: 'assignments',
+  slabs: 'slabs',
+  entries: 'entries'
+};
+
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+let DB = {
+  config: null,
+  staff: [],
+  kpis: [],
+  assignments: {},   // staffId -> [{kpiId, weightage, target, deadlineDayOverride}]
+  slabs: {},          // slabGroup -> [{minPct, incentivePct, label}]
+  entries: {}         // "staffId::YYYY-MM" -> { kpiId: {actual, firstEnteredAt, lastUpdatedAt, enteredBy, onTime} }
+};
+
+let session = null;   // {id, name, isAdmin, role, department, slabGroup}
+let currentView = 'dashboard';
+let currentMonth = new Date();
+let adminEntryStaffId = null;
+let entryFreqFilter = 'daily';
+let teamSummaryDeptFilter = 'all';
+let reportType = 'staff'; // 'staff' | 'team' | 'kpis' | 'assignments'
+let kpiReportCadenceFilter = 'all';
+let asgReportDeptFilter = 'all';
+let asgReportStaffFilter = 'all';
+
+function uid(prefix){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
+function monthKey(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'); }
+function monthLabel(d){ return MONTH_NAMES[d.getMonth()] + ' ' + d.getFullYear(); }
+function fmtDate(iso){ if(!iso) return '—'; const d = new Date(iso); return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) + ' ' + d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); }
+function round1(n){ return Math.round(n*10)/10; }
+
+/* ---------------- storage helpers ---------------- */
+/* ---------------- API layer (Google Sheets via Apps Script) ---------------- */
+async function apiGet(key){
+  try{
+    const res = await fetch(`${API_URL}?action=get&key=${encodeURIComponent(key)}`);
+    const data = await res.json();
+    return (data && data.value !== undefined) ? data.value : null;
+  }catch(e){ console.error('apiGet failed', key, e); return null; }
+}
+async function apiGetAllCore(){
+  try{
+    const res = await fetch(`${API_URL}?action=getAll`);
+    return await res.json();
+  }catch(e){ console.error('apiGetAllCore failed', e); return {}; }
+}
+async function apiSet(key, valueObj){
+  try{
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'text/plain;charset=utf-8'}, // avoids a CORS preflight against Apps Script
+      body: JSON.stringify({action:'set', key, value: JSON.stringify(valueObj), secret: API_SECRET, adminPin: adminAuthPin})
+    });
+    const data = await res.json();
+    if(data && data.error){ console.error('apiSet error', key, data.error); return false; }
+    return !!(data && data.ok);
+  }catch(e){ console.error('apiSet failed', key, e); return false; }
+}
+async function saveKey(key, value){
+  return await apiSet(key, value);
+}
+
+async function loadAll(){
+  const raw = await apiGetAllCore();
+  DB.config = raw.config ? JSON.parse(raw.config) : null;
+  DB.staff = raw.staff ? JSON.parse(raw.staff) : [];
+  DB.kpis = raw['kpi-library'] ? JSON.parse(raw['kpi-library']) : [];
+  DB.assignments = raw.assignments ? JSON.parse(raw.assignments) : {};
+  DB.slabs = raw.slabs ? JSON.parse(raw.slabs) : {};
+  // entries are NOT bulk-loaded here — see ensureEntriesLoaded() below.
+  // A single blob of every entry ever made would eventually exceed Google
+  // Sheets' ~50,000-character cell limit, so entries are stored and fetched
+  // one calendar month at a time instead (key "entries:YYYY-MM").
+}
+
+/* ---------------- month-partitioned entries ---------------- */
+let loadedEntryMonths = new Set();
+
+function monthKeyFromPeriodKey(periodKey){
+  if(periodKey.indexOf('WK-')===0) return periodKey.slice(3,10); // "WK-2026-09-05" -> "2026-09"
+  return periodKey.slice(0,7); // daily "2026-09-07" or monthly "2026-09" -> "2026-09"
+}
+
+async function ensureEntriesLoaded(monthDate){
+  const mk = monthKey(monthDate);
+  if(loadedEntryMonths.has(mk)) return;
+  const raw = await apiGet('entries:'+mk);
+  const parsed = raw ? JSON.parse(raw) : {};
+  mergeEntries(parsed);
+  loadedEntryMonths.add(mk);
+}
+
+function mergeEntries(partial){
+  Object.keys(partial).forEach(staffId=>{
+    if(!DB.entries[staffId]) DB.entries[staffId] = {};
+    Object.keys(partial[staffId]).forEach(kpiId=>{
+      if(!DB.entries[staffId][kpiId]) DB.entries[staffId][kpiId] = {};
+      Object.assign(DB.entries[staffId][kpiId], partial[staffId][kpiId]);
+    });
+  });
+}
+
+async function persistEntriesForMonth(mk){
+  const subset = {};
+  Object.keys(DB.entries).forEach(staffId=>{
+    Object.keys(DB.entries[staffId]).forEach(kpiId=>{
+      Object.keys(DB.entries[staffId][kpiId]).forEach(periodKey=>{
+        if(monthKeyFromPeriodKey(periodKey)===mk){
+          if(!subset[staffId]) subset[staffId] = {};
+          if(!subset[staffId][kpiId]) subset[staffId][kpiId] = {};
+          subset[staffId][kpiId][periodKey] = DB.entries[staffId][kpiId][periodKey];
+        }
+      });
+    });
+  });
+  return await apiSet('entries:'+mk, subset);
+}
+
+/* ---------------- seed defaults on first setup ---------------- */
+function seedDefaults(){
+  DB.slabs = {
+    'Default': [
+      {minPct:100, incentivePct:100, label:'Target met or exceeded'},
+      {minPct:90, incentivePct:90, label:'Near target'},
+      {minPct:80, incentivePct:85, label:'Good'},
+      {minPct:70, incentivePct:80, label:'Acceptable'},
+      {minPct:0, incentivePct:0, label:'Below threshold'}
+    ]
+  };
+}
+
+/* ============================= CALC ENGINE ============================= */
+function achievementPct(actual, target, direction){
+  if(actual === null || actual === undefined || target === null || target === undefined || target === 0) return null;
+  if(direction === 'lower') return (target/actual)*100;
+  return (actual/target)*100;
+}
+
+// Generic "highest threshold not exceeding the value" lookup, used both for
+// incentive slabs (score -> incentive %) and KPI bands (raw value -> achievement %).
+function lookupTier(tiers, value, thresholdKey){
+  if(value === null || value === undefined) return null;
+  const table = (tiers||[]).slice().sort((a,b)=>b[thresholdKey]-a[thresholdKey]);
+  for(const t of table){ if(value >= t[thresholdKey]) return t; }
+  return table.length ? table[table.length-1] : null;
+}
+
+// Build the list of reporting periods a KPI generates within a given month,
+// each with the exact moment it becomes overdue.
+function pad2(n){ return String(n).padStart(2,'0'); }
+
+function nextWorkingDay(date, workingDays){
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const wd = (workingDays && workingDays.length) ? workingDays : [1,2,3,4,5,6]; // default Mon–Sat
+  do{ d.setDate(d.getDate()+1); } while(!wd.includes(d.getDay()));
+  return d;
+}
+
+function getPeriods(kpi, monthDate){
+  const y = monthDate.getFullYear(), m = monthDate.getMonth();
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const freq = kpi.frequency || 'monthly';
+  const workingDays = DB.config.workingDays || [1,2,3,4,5,6];
+  const dailyCutoffHour = DB.config.dailyCutoffHour ?? 17;
+  const weeklyDueDay = DB.config.weeklyDueDay ?? 6;
+  const weeklyCutoffHour = DB.config.weeklyCutoffHour ?? 13;
+  const monthlyCutoffHour = DB.config.monthlyCutoffHour ?? 17;
+
+  if(freq === 'daily'){
+    const arr = [];
+    for(let d=1; d<=daysInMonth; d++){
+      const dayDate = new Date(y, m, d);
+      const dow = dayDate.toLocaleDateString('en-GB',{weekday:'short'});
+      const nwd = nextWorkingDay(dayDate, workingDays);
+      const dueDate = new Date(nwd.getFullYear(), nwd.getMonth(), nwd.getDate(), dailyCutoffHour,0,0);
+      arr.push({key:`${y}-${pad2(m+1)}-${pad2(d)}`, label:`${dow} ${d} ${MONTH_NAMES[m]}`, dueDate});
+    }
+    return arr;
+  }
+
+  if(freq === 'weekly'){
+    // Weeks are anchored to a fixed weekday (default Saturday) so the cycle
+    // stays continuous across month boundaries.
+    const arr = [];
+    for(let d=1; d<=daysInMonth; d++){
+      const dayDate = new Date(y, m, d);
+      if(dayDate.getDay() !== weeklyDueDay) continue;
+      const weekStart = new Date(y, m, d-6);
+      const dueDate = new Date(y, m, d, weeklyCutoffHour,0,0);
+      const fmt = (dt)=> `${dt.getDate()} ${MONTH_NAMES[dt.getMonth()]}`;
+      arr.push({
+        key: `WK-${dayDate.getFullYear()}-${pad2(dayDate.getMonth()+1)}-${pad2(dayDate.getDate())}`,
+        label: `Week ending ${fmt(dayDate)} (${fmt(weekStart)}–${fmt(dayDate)})`,
+        dueDate
+      });
+    }
+    return arr;
+  }
+
+  // monthly — due on config.deadlineDay of the following month
+  const dueDate = new Date(y, m+1, DB.config.deadlineDay, monthlyCutoffHour,0,0);
+  return [{key:`${y}-${pad2(m+1)}`, label: monthLabel(monthDate), dueDate}];
+}
+
+// Roll up every period of one KPI (for one staff member, in one month) into a
+// single achievement % — periods whose due date has passed with no entry
+// automatically score 0 ("missed"); periods not yet due are excluded.
+function rollupForKpi(staffId, kpi, assignment, monthDate){
+  const periods = getPeriods(kpi, monthDate);
+  const entryMap = ((DB.entries[staffId]||{})[kpi.id]) || {};
+  const now = new Date();
+  let sum = 0, count = 0;
+  const detailed = periods.map(p=>{
+    const rec = entryMap[p.key];
+    const expected = p.dueDate.getTime() <= now.getTime();
+    let pct = null, state = 'pending';
+    const type = kpi.type || 'value';
+    if(type === 'completion'){
+      if(rec && rec.done){ pct = 100; state = rec.onTime ? 'done-ontime' : 'done-late'; }
+      else if(expected){ pct = 0; state = 'missed'; }
+    } else if(type === 'banded'){
+      if(rec && rec.value !== undefined && rec.value !== null){
+        const band = lookupTier(kpi.bands, rec.value, 'minValue');
+        pct = band ? band.achievementPct : null;
+        state = rec.onTime ? 'done-ontime' : 'done-late';
+      } else if(expected){ pct = 0; state = 'missed'; }
+    } else {
+      if(rec && rec.value !== undefined && rec.value !== null){
+        pct = achievementPct(rec.value, assignment.target, kpi.direction);
+        state = rec.onTime ? 'done-ontime' : 'done-late';
+      } else if(expected){ pct = 0; state = 'missed'; }
+    }
+    if(pct !== null){ sum += Math.min(pct,150); count++; }
+    return Object.assign({}, p, {rec, expected, pct, state});
+  });
+  return {pct: count>0 ? sum/count : null, periods: detailed};
+}
+
+function staffMonthlyResult(staffId, monthDate){
+  const assigns = DB.assignments[staffId] || [];
+  let totalWeight = 0, weightedSum = 0, anyAssessable = false;
+  const lines = assigns.map(a=>{
+    const kpi = DB.kpis.find(k=>k.id===a.kpiId);
+    totalWeight += Number(a.weightage)||0;
+    if(!kpi) return {kpi:null, assignment:a, pct:null, periods:[]};
+    const roll = rollupForKpi(staffId, kpi, a, monthDate);
+    if(roll.pct !== null){
+      anyAssessable = true;
+      weightedSum += Math.min(roll.pct,150) * (Number(a.weightage)||0) / 100;
+    }
+    return {kpi, assignment:a, pct: roll.pct, periods: roll.periods};
+  });
+  const overall = (totalWeight>0 && anyAssessable) ? (weightedSum / (totalWeight/100)) : null;
+  return {lines, totalWeight, overall};
+}
+
+function incentiveForScore(slabGroup, score){
+  const table = DB.slabs[slabGroup] || DB.slabs['Default'] || [];
+  return lookupTier(table, score, 'minPct');
+}
+
+function tierClass(pct){
+  if(pct===null||pct===undefined) return 'neutral';
+  if(pct>=100) return 'ok';
+  if(pct>=80) return 'warn';
+  return 'bad';
+}
+
+/* ============================= RENDER SHELL ============================= */
+function el(html){
+  const t = document.createElement('template');
+  t.innerHTML = html.trim();
+  return t.content.firstElementChild;
+}
+
+async function boot(){
+  if(API_URL.indexOf('PASTE_YOUR_DEPLOYED_WEB_APP_URL_HERE') !== -1 || !API_SECRET || API_SECRET === 'CHANGE_ME_SECRET'){
+    renderNotConnected();
+    return;
+  }
+  await loadAll();
+  if(!DB.config || !DB.config.setupComplete){
+    renderSetup();
+  } else if(!session){
+    renderLogin();
+  } else {
+    renderShell();
+  }
+}
+
+function renderNotConnected(){
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+  app.appendChild(el(`
+    <div class="center-screen">
+      <div class="login-card">
+        <div class="mark">SETUP NEEDED</div>
+        <h1>This app isn't connected to a database yet</h1>
+        <p>Before this works, deploy the accompanying Google Apps Script (kpi-incentive-backend.gs.txt) as a Web App bound to a Google Sheet, then edit two constants near the top of this file's &lt;script&gt; block:</p>
+        <p class="mono small-muted">const API_URL = "your deployed /exec URL";<br>const API_SECRET = "the same secret you set in the script";</p>
+        <p>Save the file and reopen it once both are filled in.</p>
+      </div>
+    </div>
+  `));
+}
+
+/* ============================= SETUP ============================= */
+function renderSetup(){
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+  const card = el(`
+    <div class="center-screen">
+      <div class="login-card">
+        <div class="mark">FIRST-TIME SETUP</div>
+        <h1>Set up your incentive console</h1>
+        <p>This runs once. You'll create the admin passcode used to manage KPIs, weightages and incentive slabs.</p>
+        <div class="field"><label>Organisation / plant name</label><input id="s-org" placeholder="e.g. SHI Manufacturing"></div>
+        <div class="field"><label>Admin name</label><input id="s-name" placeholder="Your name"></div>
+        <div class="field"><label>Admin passcode</label><input id="s-pin" type="password" placeholder="Choose a passcode"></div>
+        <div class="flex-end"><button class="btn brass" id="s-go">Create console</button></div>
+      </div>
+    </div>
+  `);
+  app.appendChild(card);
+  card.querySelector('#s-go').onclick = async ()=>{
+    const org = card.querySelector('#s-org').value.trim() || 'Manufacturing Plant';
+    const name = card.querySelector('#s-name').value.trim() || 'Admin';
+    const pin = card.querySelector('#s-pin').value.trim();
+    if(!pin){ alert('Please set a passcode.'); return; }
+    DB.config = {orgName: org, adminName: name, adminPin: pin, deadlineDay: 5, workingDays:[1,2,3,4,5,6], dailyCutoffHour:17, weeklyDueDay:6, weeklyCutoffHour:13, monthlyCutoffHour:17, entryMode:'adminOnly', setupComplete:true};
+    adminAuthPin = pin; // needed so the second save below (slabs) authenticates correctly
+    seedDefaults();
+    const ok1 = await saveKey(KEYS.config, DB.config);
+    const ok2 = await saveKey(KEYS.slabs, DB.slabs);
+    if(!ok1 || !ok2){
+      alert('Could not reach the database. Check that API_URL and API_SECRET are set correctly and that the Apps Script is deployed with "Anyone" access, then try again.');
+      return;
+    }
+    renderLogin();
+  };
+}
+
+/* ============================= LOGIN ============================= */
+function renderLogin(){
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+  let mode = 'staff';
+  const card = el(`
+    <div class="center-screen">
+      <div class="login-card">
+        <img src="${LOGO_DATA_URI}" alt="${DB.config.orgName.toUpperCase()} logo" style="width:52px; height:52px; object-fit:contain; border-radius:6px; margin-bottom:10px;">
+        <div class="mark">${DB.config.orgName.toUpperCase()}</div>
+        <h1>KPI Incentive Console</h1>
+        <p>Sign in to view your KPIs or manage the scheme.</p>
+        <div class="toggle-row">
+          <button class="active" data-mode="staff">Staff</button>
+          <button data-mode="admin">Manager / HOD</button>
+        </div>
+        <div id="login-body"></div>
+      </div>
+    </div>
+  `);
+  app.appendChild(card);
+
+  function renderBody(){
+    const body = card.querySelector('#login-body');
+    if(mode==='staff'){
+      const opts = DB.staff.filter(s=>s.active!==false).map(s=>`<option value="${s.id}">${s.name} — ${s.role}</option>`).join('');
+      body.innerHTML = `
+        <div class="field"><label>Your name</label>
+          <select id="l-staff">${opts || '<option value="">No staff set up yet — ask your manager / HOD</option>'}</select>
+        </div>
+        <div class="flex-end"><button class="btn brass" id="l-go" ${DB.staff.length?'':'disabled'}>Continue</button></div>
+      `;
+      body.querySelector('#l-go')?.addEventListener('click', ()=>{
+        const id = body.querySelector('#l-staff').value;
+        const s = DB.staff.find(x=>x.id===id);
+        if(!s) return;
+        session = {id:s.id, name:s.name, isAdmin:false, role:s.role, department:s.department, slabGroup:s.slabGroup||'Default'};
+        currentView='dashboard';
+        renderShell();
+      });
+    } else {
+      body.innerHTML = `
+        <div class="field"><label>Manager / HOD passcode</label><input id="l-pin" type="password" placeholder="Passcode"></div>
+        <div class="flex-end"><button class="btn brass" id="l-go">Sign in</button></div>
+      `;
+      body.querySelector('#l-go').addEventListener('click', ()=>{
+        const pin = body.querySelector('#l-pin').value;
+        if(pin === DB.config.adminPin){
+          session = {id:'admin', name:DB.config.adminName, isAdmin:true, role:'Manager / HOD'};
+          adminAuthPin = pin;
+          currentView='dashboard';
+          renderShell();
+        } else {
+          alert('Incorrect passcode.');
+        }
+      });
+    }
+  }
+  card.querySelectorAll('.toggle-row button').forEach(b=>{
+    b.onclick = ()=>{
+      card.querySelectorAll('.toggle-row button').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      mode = b.dataset.mode;
+      renderBody();
+    };
+  });
+  renderBody();
+}
+
+/* ============================= SHELL ============================= */
+function navItems(){
+  if(session.isAdmin){
+    return [
+      ['dashboard','Overview'],
+      ['teamSummary','Team Summary'],
+      ['entry','Monthly Entry'],
+      ['staff','Staff'],
+      ['kpis','KPI Library'],
+      ['assignments','Assignments & Weightage'],
+      ['slabs','Incentive Slabs'],
+      ['reports','Reports'],
+      ['settings','Settings']
+    ];
+  }
+  const items = [['dashboard','My Performance']];
+  if(DB.config.entryMode !== 'adminOnly') items.push(['entry','Update My KPIs']);
+  return items;
+}
+
+async function renderShell(){
+  await ensureEntriesLoaded(currentMonth);
+  await ensureEntriesLoaded(new Date()); // compliance snapshot always looks at "today", regardless of currentMonth
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+  const wrap = el(`
+    <div id="app-inner" style="display:flex; width:100%;">
+      <div class="sidebar">
+        <div class="brand">
+          <img src="${LOGO_DATA_URI}" alt="${(DB.config.orgName||'').toUpperCase()} logo" style="width:40px; height:40px; object-fit:contain; border-radius:4px; margin-bottom:8px;">
+          <div class="mark">${(DB.config.orgName||'').toUpperCase()}</div>
+          <h1>KPI Incentive Console</h1>
+        </div>
+        <nav class="navlist" id="navlist"></nav>
+        <div class="sidebar-foot">
+          <div class="who">${session.name}</div>
+          <div>${session.isAdmin? 'Manager / HOD' : (session.role||'')}</div>
+          <button id="refresh-btn">Refresh data</button>
+          <button id="logout-btn">Sign out</button>
+        </div>
+      </div>
+      <div class="main">
+        <div class="topbar">
+          <div><h2 id="view-title"></h2><div class="sub" id="view-sub"></div></div>
+        </div>
+        <div class="content" id="content"></div>
+      </div>
+    </div>
+  `);
+  app.appendChild(wrap);
+  const nav = wrap.querySelector('#navlist');
+  navItems().forEach(([key,label])=>{
+    const b = el(`<button data-key="${key}"><span class="dot"></span>${label}</button>`);
+    if(key===currentView) b.classList.add('active');
+    b.onclick = ()=>{ currentView = key; renderShell(); };
+    nav.appendChild(b);
+  });
+  wrap.querySelector('#logout-btn').onclick = ()=>{ session=null; renderLogin(); };
+  wrap.querySelector('#refresh-btn').onclick = async ()=>{
+    loadedEntryMonths.clear();
+    await loadAll();
+    renderShell();
+  };
+
+  const titleMap = {
+    dashboard: session.isAdmin ? ['Overview','Daily/weekly compliance, plus monthly achievement & incentive'] : ['My Performance','Your KPI achievement and incentive standing'],
+    teamSummary: ['Team Summary','Overall team performance at a glance — printable for management'],
+    entry: session.isAdmin ? ['Monthly Entry','Record actuals for any staff member'] : ['Update My KPIs',"Enter this month's actuals for your assigned KPIs"],
+    staff: ['Staff','Add and manage staff records'],
+    kpis: ['KPI Library','Define the KPIs used across the scheme'],
+    assignments: ['Assignments & Weightage','Assign KPIs to each staff member with weightage and monthly targets'],
+    slabs: ['Incentive Slabs','Map achievement % to incentive % — by slab group'],
+    reports: ['Reports','Printable reports — staff, team summary, KPI library and assignments — with filters'],
+    settings: ['Settings','Deadline rules and console configuration']
+  };
+  wrap.querySelector('#view-title').textContent = titleMap[currentView][0];
+  wrap.querySelector('#view-sub').textContent = titleMap[currentView][1];
+
+  const content = wrap.querySelector('#content');
+  const renderers = {
+    dashboard: renderDashboard,
+    teamSummary: renderTeamSummary,
+    entry: renderEntry,
+    staff: renderStaffAdmin,
+    kpis: renderKpiAdmin,
+    assignments: renderAssignmentsAdmin,
+    slabs: renderSlabsAdmin,
+    reports: renderReports,
+    settings: renderSettingsAdmin
+  };
+  (renderers[currentView] || renderDashboard)(content);
+}
+
+/* ============================= DASHBOARD ============================= */
+function renderDashboard(root){
+  root.innerHTML = '';
+  if(session.isAdmin){
+    root.appendChild(renderComplianceSnapshot());
+    root.appendChild(renderMonthPicker(()=>renderShell()));
+    const panel = el(`<div class="panel"><h3>Staff achievement — ${monthLabel(currentMonth)}</h3></div>`);
+    if(DB.staff.length===0){
+      panel.appendChild(el(`<div class="empty">No staff added yet. Go to <strong>Staff</strong> to add your team.</div>`));
+    } else {
+      const table = el(`<table>
+        <thead><tr><th>Name</th><th>Role</th><th>KPIs</th><th>Weight total</th><th>Achievement</th><th>Incentive</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>`);
+      const tbody = table.querySelector('tbody');
+      DB.staff.forEach(s=>{
+        const res = staffMonthlyResult(s.id, currentMonth);
+        const tier = incentiveForScore(s.slabGroup||'Default', res.overall);
+        const tr = el(`<tr>
+          <td><strong>${s.name}</strong></td>
+          <td><span class="badge-role">${s.role}</span></td>
+          <td>${res.lines.length}</td>
+          <td>${res.totalWeight}%</td>
+          <td>${res.overall===null? '<span class="small-muted">not entered</span>' : `<span class="tag ${tierClass(res.overall)}">${round1(res.overall)}%</span>`}</td>
+          <td>${tier && res.overall!==null ? `<span class="tag ${tierClass(res.overall)}">${tier.incentivePct}%</span>` : '—'}</td>
+          <td><button class="btn ghost small" data-view="${s.id}">View</button></td>
+        </tr>`);
+        tr.querySelector('button').onclick = ()=>{ adminEntryStaffId = s.id; currentView='entry'; renderShell(); };
+        tbody.appendChild(tr);
+      });
+      panel.appendChild(table);
+    }
+    root.appendChild(panel);
+  } else {
+    root.appendChild(renderMonthPicker(()=>renderShell()));
+    const res = staffMonthlyResult(session.id, currentMonth);
+    const tier = incentiveForScore(session.slabGroup||'Default', res.overall);
+
+    const profilePanel = el(`<div class="panel" style="display:flex; gap:32px; flex-wrap:wrap; align-items:center;">
+      <div><div class="small-muted">Name</div><div style="font-weight:600; font-size:14px;">${session.name}</div></div>
+      <div><div class="small-muted">Role</div><div style="font-weight:600; font-size:14px;">${session.role||'—'}</div></div>
+      <div><div class="small-muted">Department</div><div style="font-weight:600; font-size:14px;">${session.department||'—'}</div></div>
+      <div><div class="small-muted">Incentive slab group</div><div style="font-weight:600; font-size:14px;">${session.slabGroup||'Default'}</div></div>
+    </div>`);
+    root.appendChild(profilePanel);
+
+    const hero = el(`<div class="panel">
+      <div class="score-hero">
+        <div>
+          <div class="big" style="color:${res.overall===null?'#94A3A0':(res.overall>=100?'var(--teal)':res.overall>=80?'var(--brass)':'var(--rust)')}">${res.overall===null?'—':round1(res.overall)+'%'}</div>
+          <div class="label">Weighted achievement</div>
+        </div>
+        <div class="divider"></div>
+        <div class="stat">
+          <div class="num">${tier && res.overall!==null ? tier.incentivePct+'%' : '—'}</div>
+          <div class="lbl">Incentive earned${tier ? ' — '+tier.label : ''}</div>
+        </div>
+        <div class="divider"></div>
+        <div class="stat">
+          <div class="num">${res.lines.length}</div>
+          <div class="lbl">KPIs assigned (${res.totalWeight}% weight)</div>
+        </div>
+      </div>
+    </div>`);
+    root.appendChild(hero);
+    const printRow = el(`<div class="flex-end no-print" style="margin-top:-12px; margin-bottom:20px;"><button class="btn ghost small" id="print-my-report">Print / Save as PDF</button></div>`);
+    printRow.querySelector('#print-my-report').onclick = printMyReport;
+    root.appendChild(printRow);
+
+    const gpanel = el(`<div class="panel"><h3>KPI breakdown — ${monthLabel(currentMonth)}</h3></div>`);
+    if(res.lines.length===0){
+      gpanel.appendChild(el(`<div class="empty">No KPIs assigned yet. Your admin needs to set these up under Assignments & Weightage.</div>`));
+    } else {
+      const grid = el(`<div class="gauge-grid"></div>`);
+      res.lines.forEach(l=>{
+        grid.appendChild(gaugeCard(l));
+      });
+      gpanel.appendChild(grid);
+    }
+    root.appendChild(gpanel);
+
+    if(res.lines.length>0){
+      const calcPanel = el(`<div class="panel"><h3>How your score is calculated — ${monthLabel(currentMonth)}</h3>
+        <div class="hint">Each KPI's achievement % is multiplied by its weight to build your overall weighted score.</div>
+      </div>`);
+      const table = el(`<table><thead><tr><th>KPI</th><th>Cadence</th><th>Weight</th><th>Achievement</th><th>Contribution</th></tr></thead><tbody></tbody></table>`);
+      const tbody = table.querySelector('tbody');
+      let totalPts = 0;
+      res.lines.forEach(l=>{
+        const kpi = l.kpi;
+        const freqLabel = kpi ? ({daily:'Daily', weekly:'Weekly', monthly:'Monthly'}[kpi.frequency||'monthly']) : '—';
+        const weight = Number(l.assignment.weightage)||0;
+        const pct = l.pct;
+        const contribution = pct===null ? null : Math.min(pct,150) * weight / 100;
+        if(contribution!==null) totalPts += contribution;
+        const tr = el(`<tr>
+          <td><strong>${kpi ? kpi.name : 'Unknown KPI'}</strong></td>
+          <td>${freqLabel}</td>
+          <td class="mono">${weight}%</td>
+          <td>${pct===null ? '<span class="small-muted">not entered</span>' : `<span class="tag ${tierClass(pct)}">${round1(pct)}%</span>`}</td>
+          <td class="mono">${contribution===null ? '—' : round1(contribution)+' pts'}</td>
+        </tr>`);
+        tbody.appendChild(tr);
+      });
+      calcPanel.appendChild(table);
+      const footer = el(`<div class="hint" style="margin-top:10px; margin-bottom:0;">Total weight: <strong>${res.totalWeight}%</strong> &nbsp;·&nbsp; Sum of weighted points: <strong>${round1(totalPts)}</strong> &nbsp;·&nbsp; Overall = points ÷ (weight/100) = <strong>${res.overall===null?'—':round1(res.overall)+'%'}</strong></div>`);
+      calcPanel.appendChild(footer);
+      root.appendChild(calcPanel);
+    }
+  }
+}
+
+// Quick-glance panel: for every staff member, shows the status of TODAY's
+// daily KPIs and THIS WEEK's weekly KPIs — the "did they update it or not"
+// check, computed automatically from due dates, no manual marking needed.
+function periodStateTag(state){
+  const map = {
+    'done-ontime': '<span class="tag ok">Done, on time</span>',
+    'done-late': '<span class="tag warn">Done, late</span>',
+    'missed': '<span class="tag bad">Missed</span>',
+    'pending': '<span class="tag neutral">Pending</span>'
+  };
+  return map[state] || map.pending;
+}
+
+function renderComplianceSnapshot(){
+  const now = new Date();
+  const rows = [];
+  DB.staff.forEach(s=>{
+    const assigns = DB.assignments[s.id] || [];
+    assigns.forEach(a=>{
+      const kpi = DB.kpis.find(k=>k.id===a.kpiId);
+      if(!kpi) return;
+      const freq = kpi.frequency || 'monthly';
+      if(freq !== 'daily' && freq !== 'weekly') return;
+      const roll = rollupForKpi(s.id, kpi, a, now);
+      const current = roll.periods.find(p=> now >= new Date(p.dueDate.getFullYear(), p.dueDate.getMonth(), p.dueDate.getDate()-((freq==='daily')?0:6), 0,0,0) && now <= p.dueDate) || roll.periods[roll.periods.length-1];
+      if(!current) return;
+      rows.push({staff:s, kpi, freq, current});
+    });
+  });
+  if(rows.length===0) return el(`<div style="display:none;"></div>`);
+  rows.sort((a,b)=>{
+    const order = {'missed':0,'pending':1,'done-late':2,'done-ontime':3};
+    return (order[a.current.state]??9) - (order[b.current.state]??9);
+  });
+  const panel = el(`<div class="panel"><h3>Today / this week — compliance snapshot</h3>
+    <div class="hint">Daily and weekly KPIs, checked automatically against their due date. Nothing to mark manually — a missed cut-off shows up here on its own.</div>
+  </div>`);
+  const table = el(`<table><thead><tr><th>Staff</th><th>KPI</th><th>Cadence</th><th>Period</th><th>Status</th></tr></thead><tbody></tbody></table>`);
+  const tbody = table.querySelector('tbody');
+  rows.forEach(r=>{
+    const tr = el(`<tr>
+      <td><strong>${r.staff.name}</strong></td>
+      <td>${r.kpi.name}</td>
+      <td>${r.freq==='daily'?'Daily':'Weekly'}</td>
+      <td class="small-muted">${r.current.label}</td>
+      <td>${periodStateTag(r.current.state)}</td>
+    </tr>`);
+    tbody.appendChild(tr);
+  });
+  panel.appendChild(table);
+  return panel;
+}
+
+/* ============================= TEAM SUMMARY ============================= */
+// Aggregates every staff member's monthly result into team-level numbers:
+// average achievement/incentive, a distribution across the same ok/warn/bad
+// bands used everywhere else, and a per-department roll-up — the "how's the
+// whole team doing" view management actually asked for, as opposed to the
+// per-staff Overview table.
+function computeTeamSummary(monthDate, deptFilter){
+  const staffList = DB.staff.filter(s=> s.active!==false && (!deptFilter || deptFilter==='all' || (s.department||'—')===deptFilter));
+  const rows = staffList.map(s=>{
+    const res = staffMonthlyResult(s.id, monthDate);
+    const tier = incentiveForScore(s.slabGroup||'Default', res.overall);
+    return {staff:s, res, tier};
+  });
+  const assessed = rows.filter(r=>r.res.overall!==null);
+  const avgAchievement = assessed.length ? assessed.reduce((s,r)=>s+r.res.overall,0)/assessed.length : null;
+  const avgIncentive = assessed.length ? assessed.reduce((s,r)=> s + (r.tier?r.tier.incentivePct:0),0)/assessed.length : null;
+  const tierCounts = {ok:0, warn:0, bad:0, none:0};
+  rows.forEach(r=>{
+    if(r.res.overall===null) tierCounts.none++;
+    else tierCounts[tierClass(r.res.overall)]++;
+  });
+  const byDept = {};
+  rows.forEach(r=>{
+    const d = r.staff.department || 'Unassigned';
+    if(!byDept[d]) byDept[d] = {count:0, sum:0, assessedCount:0, incentiveSum:0};
+    byDept[d].count++;
+    if(r.res.overall!==null){ byDept[d].sum += r.res.overall; byDept[d].assessedCount++; byDept[d].incentiveSum += (r.tier?r.tier.incentivePct:0); }
+  });
+  const deptRows = Object.keys(byDept).sort().map(d=>{
+    const b = byDept[d];
+    return {dept:d, count:b.count, avgAchievement: b.assessedCount? b.sum/b.assessedCount : null, avgIncentive: b.assessedCount? b.incentiveSum/b.assessedCount : null};
+  });
+  rows.sort((a,b)=>{
+    const av = a.res.overall===null? -1 : a.res.overall;
+    const bv = b.res.overall===null? -1 : b.res.overall;
+    return bv-av;
+  });
+  return {rows, avgAchievement, avgIncentive, tierCounts, deptRows, headcount: rows.length};
+}
+
+function buildTeamSummaryPanel(monthDate, deptFilter){
+  const sum = computeTeamSummary(monthDate, deptFilter);
+  const panel = el(`<div class="panel" id="team-summary-panel" style="max-width:900px;"></div>`);
+  panel.appendChild(reportLetterhead('Team Performance Summary', `${monthLabel(monthDate)} · ${deptFilter && deptFilter!=='all' ? deptFilter : 'All departments'}`));
+
+  const stats = el(`<div class="score-hero" style="margin-bottom:20px;">
+    <div><div class="big" style="font-size:38px; color:${sum.avgAchievement===null?'#94A3A0':(sum.avgAchievement>=100?'var(--teal)':sum.avgAchievement>=80?'var(--brass)':'var(--rust)')}">${sum.avgAchievement===null?'—':round1(sum.avgAchievement)+'%'}</div><div class="label">Team average achievement</div></div>
+    <div class="divider"></div>
+    <div class="stat"><div class="num" style="font-size:22px;">${sum.avgIncentive===null?'—':round1(sum.avgIncentive)+'%'}</div><div class="lbl">Team average incentive</div></div>
+    <div class="divider"></div>
+    <div class="stat"><div class="num" style="font-size:22px;">${sum.headcount}</div><div class="lbl">Staff in scope</div></div>
+  </div>`);
+  panel.appendChild(stats);
+
+  panel.appendChild(el(`<div style="margin-bottom:20px;">
+    <div class="small-muted" style="margin-bottom:6px; font-weight:600;">Achievement distribution</div>
+    <div class="row" style="gap:8px;">
+      <span class="tag ok">Met/exceeded target: ${sum.tierCounts.ok}</span>
+      <span class="tag warn">Near target (80–99%): ${sum.tierCounts.warn}</span>
+      <span class="tag bad">Below threshold: ${sum.tierCounts.bad}</span>
+      <span class="tag neutral">Not yet entered: ${sum.tierCounts.none}</span>
+    </div>
+  </div>`));
+
+  if(sum.deptRows.length){
+    panel.appendChild(el(`<h3 style="font-size:14px; margin:0 0 8px 0;">By department</h3>`));
+    const deptTable = el(`<table style="margin-bottom:20px;"><thead><tr><th>Department</th><th>Staff</th><th>Avg achievement</th><th>Avg incentive</th></tr></thead><tbody></tbody></table>`);
+    const dtbody = deptTable.querySelector('tbody');
+    sum.deptRows.forEach(d=>{
+      dtbody.appendChild(el(`<tr>
+        <td>${d.dept}</td>
+        <td class="mono">${d.count}</td>
+        <td>${d.avgAchievement===null?'<span class="small-muted">not entered</span>':`<span class="tag ${tierClass(d.avgAchievement)}">${round1(d.avgAchievement)}%</span>`}</td>
+        <td class="mono">${d.avgIncentive===null?'—':round1(d.avgIncentive)+'%'}</td>
+      </tr>`));
+    });
+    panel.appendChild(deptTable);
+  }
+
+  panel.appendChild(el(`<h3 style="font-size:14px; margin:0 0 8px 0;">All staff — ranked by achievement</h3>`));
+  const staffTable = el(`<table><thead><tr><th>Rank</th><th>Name</th><th>Role</th><th>Department</th><th>Achievement</th><th>Incentive</th></tr></thead><tbody></tbody></table>`);
+  const stbody = staffTable.querySelector('tbody');
+  if(sum.rows.length===0){
+    stbody.appendChild(el(`<tr><td colspan="6" class="small-muted" style="text-align:center; padding:16px;">No staff in scope.</td></tr>`));
+  } else {
+    sum.rows.forEach((r,i)=>{
+      stbody.appendChild(el(`<tr>
+        <td class="mono">${i+1}</td>
+        <td><strong>${r.staff.name}</strong></td>
+        <td>${r.staff.role||'—'}</td>
+        <td>${r.staff.department||'—'}</td>
+        <td>${r.res.overall===null?'<span class="small-muted">not entered</span>':`<span class="tag ${tierClass(r.res.overall)}">${round1(r.res.overall)}%</span>`}</td>
+        <td class="mono">${r.tier && r.res.overall!==null? r.tier.incentivePct+'%':'—'}</td>
+      </tr>`));
+    });
+  }
+  panel.appendChild(staffTable);
+  return panel;
+}
+
+function renderTeamSummary(root){
+  root.innerHTML = '';
+  root.appendChild(renderMonthPicker(()=>renderShell()));
+
+  const depts = Array.from(new Set(DB.staff.map(s=>s.department).filter(Boolean))).sort();
+  const controls = el(`<div class="panel no-print">
+    <div class="row" style="align-items:flex-end;">
+      <div class="field"><label>Department</label>
+        <select id="ts-dept">
+          <option value="all">All departments</option>
+          ${depts.map(d=>`<option value="${d}" ${d===teamSummaryDeptFilter?'selected':''}>${d}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field"><button class="btn brass" id="ts-print">Print / Save as PDF</button></div>
+    </div>
+  </div>`);
+  root.appendChild(controls);
+  controls.querySelector('#ts-dept').onchange = (e)=>{ teamSummaryDeptFilter = e.target.value; renderShell(); };
+  controls.querySelector('#ts-print').onclick = ()=>window.print();
+
+  root.appendChild(buildTeamSummaryPanel(currentMonth, teamSummaryDeptFilter));
+}
+
+function gaugeCard(line){
+  const pct = line.pct;
+  const clampPct = pct===null? 0 : Math.max(0, Math.min(pct,150));
+  const angle = (clampPct/150) * 270 - 135; // -135 to 135 deg sweep
+  const color = pct===null? '#B7C4C0' : pct>=100? 'var(--teal)' : pct>=80? 'var(--brass)' : 'var(--rust)';
+  const kpi = line.kpi;
+  const freqLabel = kpi ? ({daily:'Daily', weekly:'Weekly', monthly:'Monthly'}[kpi.frequency||'monthly']) : '';
+  const detailText = kpi && kpi.type==='completion' ? `${freqLabel} · qualitative · wt ${line.assignment.weightage}%`
+    : kpi && kpi.type==='banded' ? `${freqLabel} · banded (${kpi.unit||''}) · wt ${line.assignment.weightage}%`
+    : `${freqLabel} · wt ${line.assignment.weightage}% · tgt ${line.assignment.target}${kpi?kpi.unit:''}`;
+  const card = el(`<div class="gauge-card">
+    <svg width="90" height="60" viewBox="0 0 100 60">
+      <path d="M 10 55 A 40 40 0 1 1 90 55" fill="none" stroke="#DCE8E4" stroke-width="8" stroke-linecap="round"/>
+      <path id="arc" fill="none" stroke="${color}" stroke-width="8" stroke-linecap="round"/>
+    </svg>
+    <div class="gauge-num" style="color:${color}">${pct===null?'—':round1(pct)+'%'}</div>
+    <div class="kpi-name">${kpi ? kpi.name : 'Unknown KPI'}</div>
+    <div class="kpi-detail">${detailText}</div>
+  </div>`);
+  // draw arc proportion
+  const svg = card.querySelector('svg');
+  const arcPath = card.querySelector('#arc');
+  const frac = clampPct/150;
+  const r = 40, cx=50, cy=55;
+  const startAngle = -225 * Math.PI/180;
+  const sweep = 270 * Math.PI/180 * frac;
+  const endAngle = startAngle + sweep;
+  const x1 = cx + r*Math.cos(startAngle), y1 = cy + r*Math.sin(startAngle);
+  const x2 = cx + r*Math.cos(endAngle), y2 = cy + r*Math.sin(endAngle);
+  const large = sweep > Math.PI ? 1 : 0;
+  arcPath.setAttribute('d', `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`);
+  return card;
+}
+
+function renderMonthPicker(onChange){
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const hourLabel = (h)=> h===0?'12:00 AM':h<12?`${h}:00 AM`:h===12?'12:00 PM':`${h-12}:00 PM`;
+  const dailyCutoffHour = DB.config.dailyCutoffHour ?? 17;
+  const weeklyDueDay = DB.config.weeklyDueDay ?? 6;
+  const weeklyCutoffHour = DB.config.weeklyCutoffHour ?? 13;
+  const monthlyCutoffHour = DB.config.monthlyCutoffHour ?? 17;
+  const wrap = el(`<div class="panel no-print" style="display:flex; align-items:center; justify-content:space-between;">
+    <div class="month-nav">
+      <button id="m-prev">‹</button>
+      <div class="mtitle">${monthLabel(currentMonth)}</div>
+      <button id="m-next">›</button>
+    </div>
+    <div class="small-muted">Daily: ${hourLabel(dailyCutoffHour)} next working day · Weekly: ${hourLabel(weeklyCutoffHour)} ${dayNames[weeklyDueDay]} · Monthly: ${hourLabel(monthlyCutoffHour)} on day ${DB.config.deadlineDay} of following month</div>
+  </div>`);
+  wrap.querySelector('#m-prev').onclick = ()=>{ currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth()-1, 1); onChange(); };
+  wrap.querySelector('#m-next').onclick = ()=>{ currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth()+1, 1); onChange(); };
+  return wrap;
+}
+
+/* ============================= PRINTABLE REPORTS ============================= */
+function typeLabelFor(kpi){
+  if(!kpi) return '—';
+  if(kpi.type==='completion') return 'Qualitative';
+  if(kpi.type==='banded') return 'Quantitative (banded)';
+  return 'Quantitative (target)';
+}
+
+// Shared header block for every printable report: logo, org name, report
+// title/subtitle, and a generated timestamp — kept in one place so all
+// reports look and update consistently.
+function reportLetterhead(title, subtitle){
+  return el(`<div style="border-bottom:2px solid var(--frame); padding-bottom:12px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:flex-end;">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <img src="${LOGO_DATA_URI}" alt="${(DB.config.orgName||'').toUpperCase()} logo" style="width:44px; height:44px; object-fit:contain;">
+      <div>
+        <div class="small-muted mono" style="letter-spacing:.1em;">${(DB.config.orgName||'').toUpperCase()}</div>
+        <h2 style="margin:4px 0 0 0; font-size:19px;">${title}</h2>
+        ${subtitle ? `<div class="small-muted" style="margin-top:2px;">${subtitle}</div>` : ''}
+      </div>
+    </div>
+    <div class="small-muted" style="text-align:right;">Generated ${fmtDate(new Date().toISOString())}</div>
+  </div>`);
+}
+
+function buildReportPanel(staffId, monthDate){
+  const staff = DB.staff.find(s=>s.id===staffId);
+  const res = staffMonthlyResult(staffId, monthDate);
+  const tier = incentiveForScore(staff?.slabGroup||'Default', res.overall);
+  const panel = el(`<div class="panel" id="report-panel" style="max-width:900px;"></div>`);
+  panel.appendChild(reportLetterhead('Monthly KPI &amp; Incentive Report'));
+  panel.appendChild(el(`<div class="row" style="margin-bottom:6px;">
+    <div class="field" style="flex:1; min-width:150px;"><label>Staff member</label><div><strong>${staff?staff.name:'—'}</strong></div></div>
+    <div class="field" style="flex:1; min-width:150px;"><label>Role</label><div>${staff?staff.role:'—'}</div></div>
+    <div class="field" style="flex:1; min-width:150px;"><label>Department</label><div>${(staff&&staff.department)||'—'}</div></div>
+    <div class="field" style="flex:1; min-width:150px;"><label>Period</label><div>${monthLabel(monthDate)}</div></div>
+  </div>`));
+
+  const table = el(`<table><thead><tr><th>KPI</th><th>Cadence</th><th>Type</th><th>Weight %</th><th>Compliance</th><th>Achievement %</th></tr></thead><tbody></tbody></table>`);
+  const tbody = table.querySelector('tbody');
+  res.lines.forEach(l=>{
+    if(!l.kpi) return;
+    const freqLabel = {daily:'Daily',weekly:'Weekly',monthly:'Monthly'}[l.kpi.frequency||'monthly'];
+    let compliance = '—';
+    if(l.periods && l.periods.length){
+      if((l.kpi.frequency||'monthly')==='monthly'){
+        const p0 = l.periods[0];
+        if(p0.rec){
+          const valText = l.kpi.type==='completion' ? 'Done' : (p0.rec.value!==undefined ? p0.rec.value+(l.kpi.unit||'') : '—');
+          compliance = `${valText} — ${p0.state==='done-ontime'?'On time':'Late'}`;
+        } else {
+          compliance = p0.expected ? 'Missed' : 'Pending';
+        }
+      } else {
+        const onTime = l.periods.filter(p=>p.state==='done-ontime').length;
+        const late = l.periods.filter(p=>p.state==='done-late').length;
+        const missed = l.periods.filter(p=>p.state==='missed').length;
+        const total = onTime + late + missed;
+        compliance = `${onTime} on time, ${late} late, ${missed} missed (of ${total})`;
+      }
+    }
+    const tr = el(`<tr>
+      <td>${l.kpi.name}</td>
+      <td>${freqLabel}</td>
+      <td>${typeLabelFor(l.kpi)}</td>
+      <td class="mono">${l.assignment.weightage}%</td>
+      <td class="mono small-muted">${compliance}</td>
+      <td class="mono"><strong>${l.pct===null?'—':round1(l.pct)+'%'}</strong></td>
+    </tr>`);
+    tbody.appendChild(tr);
+  });
+  panel.appendChild(table);
+
+  const summary = el(`<div class="score-hero" style="margin-top:20px; padding-top:16px; border-top:1px solid var(--paper-2);">
+    <div><div class="big" style="font-size:34px;">${res.overall===null?'—':round1(res.overall)+'%'}</div><div class="label">Weighted achievement</div></div>
+    <div class="divider"></div>
+    <div class="stat"><div class="num" style="font-size:22px;">${tier && res.overall!==null?tier.incentivePct+'%':'—'}</div><div class="lbl">Incentive earned${tier?' — '+tier.label:''}</div></div>
+  </div>`);
+  panel.appendChild(summary);
+
+  const signoff = el(`<div class="row" style="margin-top:44px;">
+    <div class="field" style="flex:1;"><div style="border-top:1px solid #999; padding-top:6px; margin-top:34px;">Prepared by (${DB.config.adminName||'Admin'})</div></div>
+    <div class="field" style="flex:1;"><div style="border-top:1px solid #999; padding-top:6px; margin-top:34px;">Employee acknowledgement</div></div>
+    <div class="field" style="flex:1;"><div style="border-top:1px solid #999; padding-top:6px; margin-top:34px;">HR received</div></div>
+  </div>`);
+  panel.appendChild(signoff);
+  return panel;
+}
+
+// Full KPI library as a printable list — every KPI's cadence, measurement
+// type, direction/unit, and who currently carries it, optionally filtered
+// to one cadence.
+function buildKpiLibraryReportPanel(cadenceFilter){
+  const panel = el(`<div class="panel" id="kpi-report-panel" style="max-width:900px;"></div>`);
+  panel.appendChild(reportLetterhead('KPI Library Summary', cadenceFilter && cadenceFilter!=='all' ? `${ {daily:'Daily',weekly:'Weekly',monthly:'Monthly'}[cadenceFilter] } KPIs only` : 'All KPIs'));
+  const kpis = DB.kpis.filter(k=> !cadenceFilter || cadenceFilter==='all' || (k.frequency||'monthly')===cadenceFilter);
+  const table = el(`<table><thead><tr><th>KPI</th><th>Cadence</th><th>Measured as</th><th>Direction / Unit</th><th>Assigned to</th></tr></thead><tbody></tbody></table>`);
+  const tbody = table.querySelector('tbody');
+  if(kpis.length===0){
+    tbody.appendChild(el(`<tr><td colspan="5" class="small-muted" style="text-align:center; padding:16px;">No KPIs match this filter.</td></tr>`));
+  } else {
+    kpis.forEach(k=>{
+      const freq = k.frequency||'monthly', type = k.type||'value';
+      const holders = DB.staff.filter(s=> (DB.assignments[s.id]||[]).some(a=>a.kpiId===k.id)).map(s=>s.name);
+      const measured = type==='completion' ? 'Qualitative' : type==='banded' ? 'Quantitative — banded' : 'Quantitative — vs target';
+      const dirUnit = type==='value' ? (k.direction==='lower'?'Lower is better':'Higher is better')+(k.unit?` (${k.unit})`:'') : (k.unit || '—');
+      tbody.appendChild(el(`<tr>
+        <td><strong>${k.name}</strong></td>
+        <td>${ {daily:'Daily',weekly:'Weekly',monthly:'Monthly'}[freq] }</td>
+        <td>${measured}</td>
+        <td>${dirUnit}</td>
+        <td class="small-muted">${holders.length ? holders.join(', ') : '— unassigned —'}</td>
+      </tr>`));
+    });
+  }
+  panel.appendChild(table);
+  return panel;
+}
+
+// Every staff member's KPI assignments and weightage in one printable sheet,
+// grouped by staff, optionally filtered to a department or a single person.
+function buildAssignmentsReportPanel(deptFilter, staffFilterId){
+  const panel = el(`<div class="panel" id="asg-report-panel" style="max-width:900px;"></div>`);
+  let subtitle = 'All staff';
+  if(staffFilterId && staffFilterId!=='all'){
+    const s = DB.staff.find(x=>x.id===staffFilterId);
+    subtitle = s ? s.name : 'All staff';
+  } else if(deptFilter && deptFilter!=='all'){
+    subtitle = deptFilter;
+  }
+  panel.appendChild(reportLetterhead('KPI Assignments &amp; Weightage', subtitle));
+
+  let staffList = DB.staff.filter(s=> s.active!==false);
+  if(staffFilterId && staffFilterId!=='all') staffList = staffList.filter(s=>s.id===staffFilterId);
+  else if(deptFilter && deptFilter!=='all') staffList = staffList.filter(s=>(s.department||'—')===deptFilter);
+
+  if(staffList.length===0){
+    panel.appendChild(el(`<div class="empty">No staff match this filter.</div>`));
+    return panel;
+  }
+
+  staffList.forEach(s=>{
+    const assigns = DB.assignments[s.id] || [];
+    const block = el(`<div style="margin-bottom:22px;">
+      <div style="font-weight:600; font-size:13.5px; margin-bottom:4px;">${s.name} <span class="small-muted" style="font-weight:400;">— ${s.role||''}${s.department?' · '+s.department:''}</span></div>
+    </div>`);
+    if(assigns.length===0){
+      block.appendChild(el(`<div class="small-muted" style="font-size:12.5px;">No KPIs assigned.</div>`));
+    } else {
+      const table = el(`<table><thead><tr><th>KPI</th><th>Cadence</th><th>Weight %</th><th>Target</th></tr></thead><tbody></tbody></table>`);
+      const tbody = table.querySelector('tbody');
+      let totalW = 0;
+      assigns.forEach(a=>{
+        const kpi = DB.kpis.find(k=>k.id===a.kpiId);
+        const type = kpi ? (kpi.type||'value') : 'value';
+        totalW += Number(a.weightage)||0;
+        tbody.appendChild(el(`<tr>
+          <td>${kpi?kpi.name:'Unknown'}</td>
+          <td>${kpi ? ({daily:'Daily',weekly:'Weekly',monthly:'Monthly'}[kpi.frequency||'monthly']) : '—'}</td>
+          <td class="mono">${a.weightage}%</td>
+          <td>${type!=='value' ? '<span class="small-muted">—</span>' : (a.target+(kpi?kpi.unit:''))}</td>
+        </tr>`));
+      });
+      tbody.appendChild(el(`<tr><td colspan="2" class="small-muted" style="text-align:right;">Total weight</td><td class="mono"><strong>${totalW}%</strong></td><td></td></tr>`));
+      block.appendChild(table);
+    }
+    panel.appendChild(block);
+  });
+  return panel;
+}
+
+function renderReports(root){
+  root.innerHTML = '';
+  const tabsWrap = el(`<div class="toggle-row no-print" style="max-width:680px; margin-bottom:16px;"></div>`);
+  [['staff','Staff Monthly Report'],['team','Team Summary'],['kpis','KPI Library'],['assignments','Assignments & Weightage']].forEach(([key,label])=>{
+    const b = el(`<button>${label}</button>`);
+    if(key===reportType) b.classList.add('active');
+    b.onclick = ()=>{ reportType = key; renderShell(); };
+    tabsWrap.appendChild(b);
+  });
+  root.appendChild(tabsWrap);
+
+  if(reportType==='team'){
+    const depts = Array.from(new Set(DB.staff.map(s=>s.department).filter(Boolean))).sort();
+    const controls = el(`<div class="panel no-print">
+      <div class="row" style="align-items:flex-end;">
+        <div class="field"><label>Period</label>
+          <div class="month-nav">
+            <button id="rep-prev">‹</button>
+            <div class="mtitle">${monthLabel(currentMonth)}</div>
+            <button id="rep-next">›</button>
+          </div>
+        </div>
+        <div class="field"><label>Department</label>
+          <select id="rep-dept">
+            <option value="all">All departments</option>
+            ${depts.map(d=>`<option value="${d}" ${d===teamSummaryDeptFilter?'selected':''}>${d}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field"><button class="btn brass" id="rep-print">Print / Save as PDF</button></div>
+      </div>
+    </div>`);
+    root.appendChild(controls);
+    controls.querySelector('#rep-prev').onclick = ()=>{ currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth()-1, 1); renderShell(); };
+    controls.querySelector('#rep-next').onclick = ()=>{ currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth()+1, 1); renderShell(); };
+    controls.querySelector('#rep-dept').onchange = (e)=>{ teamSummaryDeptFilter = e.target.value; renderShell(); };
+    controls.querySelector('#rep-print').onclick = ()=>window.print();
+    root.appendChild(buildTeamSummaryPanel(currentMonth, teamSummaryDeptFilter));
+    return;
+  }
+
+  if(reportType==='kpis'){
+    const controls = el(`<div class="panel no-print">
+      <div class="row" style="align-items:flex-end;">
+        <div class="field"><label>Cadence</label>
+          <select id="rep-cadence">
+            <option value="all">All cadences</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </div>
+        <div class="field"><button class="btn brass" id="rep-print">Print / Save as PDF</button></div>
+      </div>
+    </div>`);
+    root.appendChild(controls);
+    controls.querySelector('#rep-cadence').value = kpiReportCadenceFilter;
+    controls.querySelector('#rep-cadence').onchange = (e)=>{ kpiReportCadenceFilter = e.target.value; renderShell(); };
+    controls.querySelector('#rep-print').onclick = ()=>window.print();
+    root.appendChild(buildKpiLibraryReportPanel(kpiReportCadenceFilter));
+    return;
+  }
+
+  if(reportType==='assignments'){
+    const depts = Array.from(new Set(DB.staff.map(s=>s.department).filter(Boolean))).sort();
+    const controls = el(`<div class="panel no-print">
+      <div class="row" style="align-items:flex-end;">
+        <div class="field"><label>Department</label>
+          <select id="rep-dept">
+            <option value="all">All departments</option>
+            ${depts.map(d=>`<option value="${d}" ${d===asgReportDeptFilter?'selected':''}>${d}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field"><label>Staff member</label>
+          <select id="rep-staff-f">
+            <option value="all">All in scope</option>
+            ${DB.staff.map(s=>`<option value="${s.id}" ${s.id===asgReportStaffFilter?'selected':''}>${s.name}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field"><button class="btn brass" id="rep-print">Print / Save as PDF</button></div>
+      </div>
+    </div>`);
+    root.appendChild(controls);
+    controls.querySelector('#rep-dept').onchange = (e)=>{ asgReportDeptFilter = e.target.value; asgReportStaffFilter = 'all'; renderShell(); };
+    controls.querySelector('#rep-staff-f').onchange = (e)=>{ asgReportStaffFilter = e.target.value; renderShell(); };
+    controls.querySelector('#rep-print').onclick = ()=>window.print();
+    root.appendChild(buildAssignmentsReportPanel(asgReportDeptFilter, asgReportStaffFilter));
+    return;
+  }
+
+  // default: reportType === 'staff'
+  if(DB.staff.length===0){
+    root.appendChild(el(`<div class="empty">Add staff first under the Staff section.</div>`));
+    return;
+  }
+  const staffId = adminEntryStaffId || DB.staff[0].id;
+  const controls = el(`<div class="panel no-print">
+    <div class="row" style="align-items:flex-end;">
+      <div class="field"><label>Staff member</label>
+        <select id="rep-staff">${DB.staff.map(s=>`<option value="${s.id}" ${s.id===staffId?'selected':''}>${s.name}</option>`).join('')}</select>
+      </div>
+      <div class="field"><label>Period</label>
+        <div class="month-nav">
+          <button id="rep-prev">‹</button>
+          <div class="mtitle">${monthLabel(currentMonth)}</div>
+          <button id="rep-next">›</button>
+        </div>
+      </div>
+      <div class="field"><button class="btn brass" id="rep-print">Print / Save as PDF</button></div>
+    </div>
+  </div>`);
+  root.appendChild(controls);
+  controls.querySelector('#rep-staff').onchange = (e)=>{ adminEntryStaffId = e.target.value; renderShell(); };
+  controls.querySelector('#rep-prev').onclick = ()=>{ currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth()-1, 1); renderShell(); };
+  controls.querySelector('#rep-next').onclick = ()=>{ currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth()+1, 1); renderShell(); };
+  controls.querySelector('#rep-print').onclick = ()=>window.print();
+
+  root.appendChild(buildReportPanel(staffId, currentMonth));
+}
+
+function printMyReport(){
+  const container = document.getElementById('content');
+  container.innerHTML = '';
+  container.appendChild(buildReportPanel(session.id, currentMonth));
+  const restore = ()=>{ renderShell(); window.removeEventListener('afterprint', restore); };
+  window.addEventListener('afterprint', restore);
+  window.print();
+}
+
+/* ============================= MONTHLY ENTRY ============================= */
+function renderEntry(root){
+  root.innerHTML = '';
+  root.appendChild(renderMonthPicker(()=>renderShell()));
+
+  let targetStaffId = session.isAdmin ? (adminEntryStaffId || (DB.staff[0]?.id)) : session.id;
+
+  if(session.isAdmin){
+    const picker = el(`<div class="panel"><div class="field" style="max-width:320px;">
+      <label>Staff member</label>
+      <select id="entry-staff">${DB.staff.map(s=>`<option value="${s.id}" ${s.id===targetStaffId?'selected':''}>${s.name} — ${s.role}</option>`).join('')}</select>
+    </div></div>`);
+    root.appendChild(picker);
+    picker.querySelector('#entry-staff').onchange = (e)=>{ adminEntryStaffId = e.target.value; renderShell(); };
+    if(DB.staff.length===0){
+      root.appendChild(el(`<div class="empty">Add staff first under the Staff section.</div>`));
+      return;
+    }
+  }
+
+  const staffObj = DB.staff.find(s=>s.id===targetStaffId);
+  const allAssigns = DB.assignments[targetStaffId] || [];
+  if(allAssigns.length===0){
+    root.appendChild(el(`<div class="empty">No KPIs assigned for this staff member yet.</div>`));
+    return;
+  }
+
+  const counts = {daily:0, weekly:0, monthly:0};
+  allAssigns.forEach(a=>{
+    const kpi = DB.kpis.find(k=>k.id===a.kpiId);
+    if(kpi) counts[kpi.frequency||'monthly']++;
+  });
+  const tabsWrap = el(`<div class="toggle-row" style="max-width:520px; margin-bottom:16px;"></div>`);
+  [['all',`All (${allAssigns.length})`], ['daily',`Daily (${counts.daily})`], ['weekly',`Weekly (${counts.weekly})`], ['monthly',`Monthly (${counts.monthly})`]].forEach(([key,label])=>{
+    const b = el(`<button>${label}</button>`);
+    if(key===entryFreqFilter) b.classList.add('active');
+    b.onclick = ()=>{ entryFreqFilter = key; renderShell(); };
+    tabsWrap.appendChild(b);
+  });
+  root.appendChild(tabsWrap);
+
+  const assigns = allAssigns.filter(a=>{
+    if(entryFreqFilter==='all') return true;
+    const kpi = DB.kpis.find(k=>k.id===a.kpiId);
+    return kpi && (kpi.frequency||'monthly')===entryFreqFilter;
+  });
+  if(assigns.length===0){
+    root.appendChild(el(`<div class="empty">No ${entryFreqFilter} KPIs assigned.</div>`));
+    return;
+  }
+
+  assigns.forEach(a=>{
+    const kpi = DB.kpis.find(k=>k.id===a.kpiId);
+    if(!kpi) return;
+    root.appendChild(renderKpiEntryBlock(targetStaffId, kpi, a));
+  });
+}
+
+function renderKpiEntryBlock(staffId, kpi, assignment){
+  const freq = kpi.frequency || 'monthly';
+  const type = kpi.type || 'value';
+  const roll = rollupForKpi(staffId, kpi, assignment, currentMonth);
+  const freqLabel = {daily:'Daily', weekly:'Weekly', monthly:'Monthly'}[freq];
+  const typeDesc = type==='value' ? ' · target '+assignment.target+(kpi.unit||'')
+    : type==='banded' ? ' · banded scoring ('+(kpi.unit||'')+')'
+    : ' · qualitative (done/not done)';
+  const panel = el(`<div class="panel">
+    <h3>${kpi.name} <span class="small-muted mono">— ${freqLabel}${typeDesc} · weight ${assignment.weightage}%</span></h3>
+  </div>`);
+
+  if(freq === 'monthly'){
+    // single row, same as a plain monthly value/completion entry
+    const p = roll.periods[0];
+    panel.appendChild(renderPeriodRow(staffId, kpi, assignment, p));
+  } else {
+    const list = el(`<div id="entrylist-${kpi.id}" style="max-height:340px; overflow-y:auto; border:1px solid var(--paper-2); border-radius:var(--radius);"></div>`);
+    // most relevant first: missed/pending near the top of visible scroll by showing latest period first
+    roll.periods.slice().reverse().forEach(p=>{
+      list.appendChild(renderPeriodRow(staffId, kpi, assignment, p, true));
+    });
+    panel.appendChild(list);
+  }
+  return panel;
+}
+
+function renderPeriodRow(staffId, kpi, assignment, p, compact){
+  const type = kpi.type || 'value';
+  const rec = p.rec;
+  const statusHtml = !rec
+    ? (p.expected ? '<span class="tag bad">Missed</span>' : '<span class="tag neutral">Pending</span>')
+    : (rec.onTime ? '<span class="tag ok">On time</span>' : '<span class="tag warn">Late</span>');
+  let valueLine = '';
+  if(rec){
+    if(type==='completion'){
+      valueLine = 'Marked done';
+    } else if(type==='banded'){
+      const band = lookupTier(kpi.bands, rec.value, 'minValue');
+      valueLine = `Value: ${rec.value}${kpi.unit||''} → ${band? band.achievementPct+'% ('+ (band.label||'') +')' : 'no matching band'}`;
+    } else {
+      const pct = achievementPct(rec.value, assignment.target, kpi.direction);
+      valueLine = `Value: ${rec.value}${kpi.unit||''} → ${pct===null?'—':round1(pct)+'%'}`;
+    }
+  }
+  const todayStr = new Date().toISOString().slice(0,10);
+  const loggedNote = rec && rec.completedOn && rec.firstEnteredAt && rec.completedOn !== rec.firstEnteredAt.slice(0,10)
+    ? ` (logged ${fmtDate(rec.firstEnteredAt)})` : '';
+  const row = el(`<div class="kpi-item" style="${compact?'padding:8px 12px;':''}">
+    <div style="flex:1;">
+      <strong>${p.label}</strong> ${statusHtml}
+      ${rec ? `<div class="small-muted mono">${valueLine} — done on ${rec.completedOn || fmtDate(rec.firstEnteredAt)} by ${rec.enteredBy}${loggedNote}</div>` : ''}
+    </div>
+    <div style="display:flex; align-items:center; gap:8px;" class="entry-controls"></div>
+  </div>`);
+  const controls = row.querySelector('.entry-controls');
+  const dateInput = el(`<input type="date" class="mono" style="width:140px;" value="${rec? (rec.completedOn||todayStr) : todayStr}" title="Date this actually happened">`);
+  if(type === 'completion'){
+    if(rec && rec.done){
+      const undo = el(`<button class="btn ghost small">Undo</button>`);
+      undo.onclick = async ()=>{ await removeEntry(staffId, kpi.id, p.key); rerenderEntryPreserveScroll(); };
+      controls.appendChild(undo);
+    } else {
+      const doneBtn = el(`<button class="btn brass small">Mark done</button>`);
+      doneBtn.onclick = async ()=>{ await saveEntry(staffId, kpi, p.key, p.dueDate, {done:true}, dateInput.value); rerenderEntryPreserveScroll(); };
+      controls.appendChild(dateInput);
+      controls.appendChild(doneBtn);
+    }
+  } else {
+    const input = el(`<input type="number" step="any" class="mono" style="width:100px;" value="${rec? rec.value : ''}" placeholder="Actual">`);
+    const saveBtn = el(`<button class="btn brass small">Save</button>`);
+    saveBtn.onclick = async ()=>{
+      const val = parseFloat(input.value);
+      if(isNaN(val)){ alert('Enter a numeric value.'); return; }
+      await saveEntry(staffId, kpi, p.key, p.dueDate, {value: val}, dateInput.value);
+      rerenderEntryPreserveScroll();
+    };
+    controls.appendChild(input);
+    controls.appendChild(dateInput);
+    controls.appendChild(saveBtn);
+  }
+  return row;
+}
+
+// Re-renders after an entry save/undo without losing the user's scroll
+// position — a bare renderShell() rebuilds #content and every per-KPI list
+// from scratch, which resets their scrollTop to 0 and throws the user back
+// to the top of a long daily/weekly list every time they tick one item off.
+async function rerenderEntryPreserveScroll(){
+  const content = document.getElementById('content');
+  const contentScroll = content ? content.scrollTop : 0;
+  const listScrolls = {};
+  document.querySelectorAll('[id^="entrylist-"]').forEach(elx=>{ listScrolls[elx.id] = elx.scrollTop; });
+  await renderShell();
+  const newContent = document.getElementById('content');
+  if(newContent) newContent.scrollTop = contentScroll;
+  Object.keys(listScrolls).forEach(id=>{
+    const elx = document.getElementById(id);
+    if(elx) elx.scrollTop = listScrolls[id];
+  });
+}
+
+async function saveEntry(staffId, kpi, periodKey, dueDate, payload, completedDateStr){
+  if(!DB.entries[staffId]) DB.entries[staffId] = {};
+  if(!DB.entries[staffId][kpi.id]) DB.entries[staffId][kpi.id] = {};
+  const existing = DB.entries[staffId][kpi.id][periodKey];
+  const now = new Date();
+  // "completedOn" is the date the work actually happened (as told to us);
+  // we score on-time/late against THAT date, not the moment this got typed in.
+  let completedRef = now;
+  if(completedDateStr){
+    const [cy,cm,cd] = completedDateStr.split('-').map(Number);
+    completedRef = new Date(cy, cm-1, cd, 23,59,59); // credit them through end of that day
+  }
+  const onTime = existing ? existing.onTime : (completedRef.getTime() <= dueDate.getTime());
+  DB.entries[staffId][kpi.id][periodKey] = Object.assign({}, payload, {
+    completedOn: completedDateStr || (existing ? existing.completedOn : now.toISOString().slice(0,10)),
+    firstEnteredAt: existing ? existing.firstEnteredAt : now.toISOString(),
+    lastUpdatedAt: now.toISOString(),
+    enteredBy: session.name,
+    onTime
+  });
+  const mk = monthKeyFromPeriodKey(periodKey);
+  loadedEntryMonths.add(mk); // this month's data is now authoritative in memory
+  return await persistEntriesForMonth(mk);
+}
+
+async function removeEntry(staffId, kpiId, periodKey){
+  if(DB.entries[staffId] && DB.entries[staffId][kpiId]){
+    delete DB.entries[staffId][kpiId][periodKey];
+    const mk = monthKeyFromPeriodKey(periodKey);
+    loadedEntryMonths.add(mk);
+    await persistEntriesForMonth(mk);
+  }
+}
+
+/* ============================= STAFF ADMIN ============================= */
+function renderStaffAdmin(root){
+  root.innerHTML = '';
+  const panel = el(`<div class="panel"><h3>Add staff member</h3>
+    <div class="row">
+      <div class="field"><label>Name</label><input id="ns-name" placeholder="Full name"></div>
+      <div class="field"><label>Role / position</label><input id="ns-role" placeholder="e.g. Line Leader"></div>
+      <div class="field"><label>Department</label>
+        <select id="ns-dept">
+          <option>Production - Administration</option>
+          <option>Production - Supervisors</option>
+          <option>Production - Line Leaders</option>
+          <option>Quality Assurance</option>
+          <option>Engineering</option>
+        </select>
+      </div>
+      <div class="field"><label>Incentive slab group</label>
+        <select id="ns-slab"></select>
+      </div>
+    </div>
+    <div class="flex-end"><button class="btn brass" id="ns-add">Add staff</button></div>
+  </div>`);
+  const slabSel = panel.querySelector('#ns-slab');
+  Object.keys(DB.slabs).forEach(g=> slabSel.appendChild(el(`<option>${g}</option>`)));
+  root.appendChild(panel);
+  panel.querySelector('#ns-add').onclick = async ()=>{
+    const name = panel.querySelector('#ns-name').value.trim();
+    const role = panel.querySelector('#ns-role').value.trim();
+    const dept = panel.querySelector('#ns-dept').value;
+    const slabGroup = panel.querySelector('#ns-slab').value;
+    if(!name || !role){ alert('Name and role are required.'); return; }
+    DB.staff.push({id: uid('st'), name, role, department: dept, slabGroup, active:true});
+    await saveKey(KEYS.staff, DB.staff);
+    renderShell();
+  };
+
+  const listPanel = el(`<div class="panel"><h3>Staff list</h3></div>`);
+  if(DB.staff.length===0){
+    listPanel.appendChild(el(`<div class="empty">No staff yet.</div>`));
+  } else {
+    const table = el(`<table><thead><tr><th>Name</th><th>Role</th><th>Department</th><th>Slab group</th><th>Status</th><th></th></tr></thead><tbody></tbody></table>`);
+    const tbody = table.querySelector('tbody');
+    DB.staff.forEach(s=>{
+      const tr = el(`<tr>
+        <td><strong>${s.name}</strong></td>
+        <td>${s.role}</td>
+        <td>${s.department||'—'}</td>
+        <td>${s.slabGroup||'Default'}</td>
+        <td>${s.active!==false? '<span class="tag ok">Active</span>' : '<span class="tag neutral">Inactive</span>'}</td>
+        <td>
+          <button class="btn ghost small" data-a="toggle">${s.active!==false?'Deactivate':'Activate'}</button>
+          <button class="btn danger small" data-a="del">Remove</button>
+        </td>
+      </tr>`);
+      tr.querySelector('[data-a="toggle"]').onclick = async ()=>{
+        s.active = s.active===false ? true : false;
+        await saveKey(KEYS.staff, DB.staff);
+        renderShell();
+      };
+      tr.querySelector('[data-a="del"]').onclick = async ()=>{
+        if(!confirm(`Remove ${s.name}? This does not delete their historical entries.`)) return;
+        DB.staff = DB.staff.filter(x=>x.id!==s.id);
+        await saveKey(KEYS.staff, DB.staff);
+        renderShell();
+      };
+      tbody.appendChild(tr);
+    });
+    listPanel.appendChild(table);
+  }
+  root.appendChild(listPanel);
+}
+
+/* ============================= KPI LIBRARY ADMIN ============================= */
+function renderKpiAdmin(root){
+  root.innerHTML = '';
+  const panel = el(`<div class="panel"><h3>Add KPI</h3>
+    <div class="row">
+      <div class="field"><label>KPI name</label><input id="nk-name" placeholder="e.g. Stock Variance %"></div>
+      <div class="field"><label>Cadence</label>
+        <select id="nk-freq">
+          <option value="monthly">Monthly</option>
+          <option value="weekly">Weekly</option>
+          <option value="daily">Daily</option>
+        </select>
+      </div>
+      <div class="field"><label>Measured as</label>
+        <select id="nk-type">
+          <option value="value">Quantitative — vs a target (ratio-based)</option>
+          <option value="banded">Quantitative — banded scoring (you set the achievement scale)</option>
+          <option value="completion">Qualitative — done / not done</option>
+        </select>
+      </div>
+    </div>
+    <div class="row" id="nk-value-fields">
+      <div class="field"><label>Unit</label><input id="nk-unit" placeholder="e.g. %, kg, hrs, count" style="width:110px;"></div>
+      <div class="field"><label>Direction</label>
+        <select id="nk-dir">
+          <option value="higher">Higher is better</option>
+          <option value="lower">Lower is better</option>
+        </select>
+      </div>
+    </div>
+    <div class="row" id="nk-band-fields" style="display:none;">
+      <div class="field"><label>Unit</label><input id="nk-band-unit" placeholder="e.g. %" style="width:110px;"></div>
+    </div>
+    <div class="hint" id="nk-hint">A ratio-based KPI (e.g. OEE%) scores actual/target automatically. A banded KPI (e.g. stock variance%) lets you set exactly what achievement % applies at each value — you'll edit the bands after adding it below. A qualitative KPI is a simple done/not-done check.</div>
+    <div class="flex-end"><button class="btn brass" id="nk-add">Add KPI</button></div>
+  </div>`);
+  root.appendChild(panel);
+  const typeSel = panel.querySelector('#nk-type');
+  const valueFields = panel.querySelector('#nk-value-fields');
+  const bandFields = panel.querySelector('#nk-band-fields');
+  function syncTypeFields(){
+    valueFields.style.display = typeSel.value==='value' ? 'flex' : 'none';
+    bandFields.style.display = typeSel.value==='banded' ? 'flex' : 'none';
+  }
+  typeSel.onchange = syncTypeFields;
+  syncTypeFields();
+  panel.querySelector('#nk-add').onclick = async ()=>{
+    const name = panel.querySelector('#nk-name').value.trim();
+    const frequency = panel.querySelector('#nk-freq').value;
+    const type = typeSel.value;
+    if(!name){ alert('Name required.'); return; }
+    const kpi = {id: uid('kpi'), name, frequency, type};
+    if(type==='value'){
+      kpi.unit = panel.querySelector('#nk-unit').value.trim();
+      kpi.direction = panel.querySelector('#nk-dir').value;
+    } else if(type==='banded'){
+      kpi.unit = panel.querySelector('#nk-band-unit').value.trim() || '%';
+      // starter template — edit these to match your actual policy
+      kpi.bands = [
+        {minValue:0, achievementPct:100, label:'Within acceptable range'},
+        {minValue:20, achievementPct:50, label:'20% variance'},
+        {minValue:30, achievementPct:25, label:'30% variance'},
+        {minValue:30.01, achievementPct:0, label:'Above 30% variance'}
+      ];
+    }
+    DB.kpis.push(kpi);
+    await saveKey(KEYS.kpis, DB.kpis);
+    renderShell();
+  };
+
+  const listPanel = el(`<div class="panel"><h3>KPI library <span class="small-muted mono">(${DB.kpis.length} defined)</span></h3></div>`);
+  if(DB.kpis.length===0){
+    listPanel.appendChild(el(`<div class="empty">No KPIs defined yet.</div>`));
+  } else {
+    const filterRow = el(`<div class="row" style="margin-bottom:10px;">
+      <div class="field" style="flex:1; min-width:180px;"><input id="kpi-search" placeholder="Search KPIs by name…"></div>
+      <div class="field">
+        <select id="kpi-freq-filter">
+          <option value="all">All cadences</option>
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+        </select>
+      </div>
+    </div>`);
+    listPanel.appendChild(filterRow);
+    const tableWrap = el(`<div></div>`);
+    listPanel.appendChild(tableWrap);
+
+    function typeLabel(k){
+      const type = k.type||'value';
+      if(type==='completion') return 'Qualitative';
+      if(type==='banded') return 'Quantitative — banded';
+      return 'Quantitative — vs target';
+    }
+
+    function drawList(){
+      tableWrap.innerHTML = '';
+      const q = filterRow.querySelector('#kpi-search').value.trim().toLowerCase();
+      const freqF = filterRow.querySelector('#kpi-freq-filter').value;
+      const filtered = DB.kpis.filter(k=>{
+        if(freqF!=='all' && (k.frequency||'monthly')!==freqF) return false;
+        if(q && !k.name.toLowerCase().includes(q)) return false;
+        return true;
+      });
+      if(filtered.length===0){
+        tableWrap.appendChild(el(`<div class="empty">No KPIs match.</div>`));
+        return;
+      }
+      const table = el(`<table><thead><tr><th>KPI</th><th>Cadence</th><th>Measured as</th><th>Direction</th><th></th></tr></thead><tbody></tbody></table>`);
+      const tbody = table.querySelector('tbody');
+      filtered.forEach(k=>{
+        const freq = k.frequency||'monthly', type = k.type||'value';
+        const tr = el(`<tr>
+          <td><strong>${k.name}</strong></td>
+          <td>${ {daily:'Daily',weekly:'Weekly',monthly:'Monthly'}[freq] }</td>
+          <td>${typeLabel(k)}</td>
+          <td>${type==='value' ? (k.direction==='lower'?'Lower is better':'Higher is better') : '—'}</td>
+          <td><button class="btn danger small">Remove</button></td>
+        </tr>`);
+        tr.querySelector('button').onclick = async ()=>{
+          if(!confirm(`Remove KPI "${k.name}"? Existing assignments referencing it will stop showing.`)) return;
+          DB.kpis = DB.kpis.filter(x=>x.id!==k.id);
+          await saveKey(KEYS.kpis, DB.kpis);
+          renderShell();
+        };
+        tbody.appendChild(tr);
+        if(type==='banded'){
+          const bandRow = el(`<tr><td colspan="5" style="padding:0; background:#EEF4F1;"></td></tr>`);
+          bandRow.querySelector('td').appendChild(renderBandsEditor(k));
+          tbody.appendChild(bandRow);
+        }
+      });
+      tableWrap.appendChild(table);
+    }
+    filterRow.querySelector('#kpi-search').addEventListener('input', drawList);
+    filterRow.querySelector('#kpi-freq-filter').addEventListener('change', drawList);
+    drawList();
+  }
+  root.appendChild(listPanel);
+}
+
+// Inline editor for a banded KPI's achievement bands: "value >= X → achievement Y%".
+function renderBandsEditor(kpi){
+  const wrap = el(`<div style="padding:12px 16px;">
+    <div class="small-muted" style="margin-bottom:8px;">Bands for <strong>${kpi.name}</strong> (${kpi.unit||''}) — achievement % applied once the entered value reaches each threshold.</div>
+  </div>`);
+  const table = el(`<table><thead><tr><th>Value ≥</th><th>Achievement %</th><th>Label</th><th></th></tr></thead><tbody></tbody></table>`);
+  const tbody = table.querySelector('tbody');
+  const bands = (kpi.bands||[]).slice().sort((a,b)=>b.minValue-a.minValue);
+  bands.forEach(b=>{
+    const realIdx = kpi.bands.indexOf(b);
+    const tr = el(`<tr>
+      <td><input type="number" step="any" class="mono" style="width:90px;" value="${b.minValue}"></td>
+      <td><input type="number" class="mono" style="width:90px;" value="${b.achievementPct}"></td>
+      <td><input style="width:100%;" value="${b.label||''}"></td>
+      <td><button class="btn danger small">Remove</button></td>
+    </tr>`);
+    const inputs = tr.querySelectorAll('input');
+    inputs[0].onchange = async ()=>{ kpi.bands[realIdx].minValue = parseFloat(inputs[0].value)||0; await saveKey(KEYS.kpis, DB.kpis); };
+    inputs[1].onchange = async ()=>{ kpi.bands[realIdx].achievementPct = parseFloat(inputs[1].value)||0; await saveKey(KEYS.kpis, DB.kpis); };
+    inputs[2].onchange = async ()=>{ kpi.bands[realIdx].label = inputs[2].value; await saveKey(KEYS.kpis, DB.kpis); };
+    tr.querySelector('button').onclick = async ()=>{
+      kpi.bands = kpi.bands.filter((x,i)=>i!==realIdx);
+      await saveKey(KEYS.kpis, DB.kpis);
+      renderShell();
+    };
+    tbody.appendChild(tr);
+  });
+  wrap.appendChild(table);
+  const addBtn = el(`<div class="flex-end" style="margin-top:8px;"><button class="btn ghost small">+ Add band</button></div>`);
+  addBtn.querySelector('button').onclick = async ()=>{
+    kpi.bands.push({minValue:0, achievementPct:0, label:'New band'});
+    await saveKey(KEYS.kpis, DB.kpis);
+    renderShell();
+  };
+  wrap.appendChild(addBtn);
+  return wrap;
+}
+
+/* ============================= ASSIGNMENTS ADMIN ============================= */
+function renderAssignmentsAdmin(root){
+  root.innerHTML = '';
+  if(DB.staff.length===0 || DB.kpis.length===0){
+    root.appendChild(el(`<div class="empty">Add at least one staff member and one KPI first.</div>`));
+    return;
+  }
+  const sel = el(`<div class="panel"><div class="field" style="max-width:320px;"><label>Staff member</label>
+    <select id="asg-staff">${DB.staff.map(s=>`<option value="${s.id}">${s.name} — ${s.role}</option>`).join('')}</select>
+  </div></div>`);
+  root.appendChild(sel);
+  let staffId = DB.staff[0].id;
+  sel.querySelector('#asg-staff').onchange = (e)=>{ staffId = e.target.value; drawAssignPanel(); };
+
+  const body = el(`<div id="asg-body"></div>`);
+  root.appendChild(body);
+
+  function drawAssignPanel(){
+    body.innerHTML = '';
+    const assigns = DB.assignments[staffId] || [];
+    const totalW = assigns.reduce((s,a)=>s+(Number(a.weightage)||0),0);
+    const panel = el(`<div class="panel"><h3>KPI assignments</h3>
+      <div class="hint">Total weightage: <strong class="mono">${totalW}%</strong> ${totalW===100?'✓ balanced':'— should total 100%'}</div>
+    </div>`);
+    if(assigns.length===0){
+      panel.appendChild(el(`<div class="empty">No KPIs assigned yet.</div>`));
+    } else {
+      const table = el(`<table><thead><tr><th>KPI</th><th>Cadence</th><th>Weightage %</th><th>Target</th><th></th></tr></thead><tbody></tbody></table>`);
+      const tbody = table.querySelector('tbody');
+      assigns.forEach((a,idx)=>{
+        const kpi = DB.kpis.find(k=>k.id===a.kpiId);
+        const freq = kpi ? (kpi.frequency||'monthly') : 'monthly';
+        const type = kpi ? (kpi.type||'value') : 'value';
+        const freqLabel = {daily:'Daily',weekly:'Weekly',monthly:'Monthly'}[freq];
+        const tr = el(`<tr>
+          <td><strong>${kpi?kpi.name:'Unknown'}</strong> <span class="small-muted mono">${kpi && type==='value' ?(kpi.direction==='lower'?'(lower better)':'(higher better)'):(type==='completion'?'(qualitative)':type==='banded'?'(banded)':'')}</span></td>
+          <td>${freqLabel}</td>
+          <td><input type="number" class="mono" style="width:80px;" value="${a.weightage}"></td>
+          <td>${type!=='value' ? '<span class="small-muted">'+(type==='banded'?'— scored by bands —':'— done/not done —')+'</span>' : `<input type="number" step="any" class="mono" style="width:100px;" value="${a.target}"> <span class="small-muted">${kpi?kpi.unit:''} / ${freqLabel.toLowerCase()}</span>`}</td>
+          <td><button class="btn danger small">Remove</button></td>
+        </tr>`);
+        const wInput = tr.querySelectorAll('input')[0];
+        wInput.onchange = async ()=>{ a.weightage = parseFloat(wInput.value)||0; await saveKey(KEYS.assignments, DB.assignments); drawAssignPanel(); };
+        if(type==='value'){
+          const tInput = tr.querySelectorAll('input')[1];
+          tInput.onchange = async ()=>{ a.target = parseFloat(tInput.value)||0; await saveKey(KEYS.assignments, DB.assignments); };
+        }
+        tr.querySelector('button').onclick = async ()=>{
+          DB.assignments[staffId] = assigns.filter((x,i)=>i!==idx);
+          await saveKey(KEYS.assignments, DB.assignments);
+          drawAssignPanel();
+        };
+        tbody.appendChild(tr);
+      });
+      panel.appendChild(table);
+    }
+
+    const assignedIds = assigns.map(a=>a.kpiId);
+    const available = DB.kpis.filter(k=>!assignedIds.includes(k.id));
+    const selectedKpi = available[0];
+    const addRow = el(`<div class="row" style="margin-top:14px; align-items:flex-end;">
+      <div class="field"><label>Add KPI</label>
+        <select id="add-kpi">${available.map(k=>`<option value="${k.id}">${k.name} (${ {daily:'Daily',weekly:'Weekly',monthly:'Monthly'}[k.frequency||'monthly'] })</option>`).join('') || '<option value="">All KPIs assigned</option>'}</select>
+      </div>
+      <div class="field"><label>Weightage %</label><input id="add-w" type="number" style="width:90px;" value="0"></div>
+      <div class="field" id="add-t-field"><label>Target</label><input id="add-t" type="number" step="any" style="width:110px;" value="0"></div>
+      <div class="field"><button class="btn brass" id="add-go" ${available.length?'':'disabled'}>Add</button></div>
+    </div>`);
+    const kpiSel = addRow.querySelector('#add-kpi');
+    const tField = addRow.querySelector('#add-t-field');
+    function syncTargetField(){
+      const k = DB.kpis.find(x=>x.id===kpiSel.value);
+      tField.style.display = (k && (k.type||'value')!=='value') ? 'none' : 'flex';
+    }
+    kpiSel?.addEventListener('change', syncTargetField);
+    syncTargetField();
+    addRow.querySelector('#add-go')?.addEventListener('click', async ()=>{
+      const kpiId = kpiSel.value;
+      const k = DB.kpis.find(x=>x.id===kpiId);
+      const weightage = parseFloat(addRow.querySelector('#add-w').value)||0;
+      const target = (k && (k.type||'value')!=='value') ? null : (parseFloat(addRow.querySelector('#add-t').value)||0);
+      if(!kpiId) return;
+      if(!DB.assignments[staffId]) DB.assignments[staffId] = [];
+      DB.assignments[staffId].push({kpiId, weightage, target});
+      await saveKey(KEYS.assignments, DB.assignments);
+      drawAssignPanel();
+    });
+    panel.appendChild(addRow);
+    body.appendChild(panel);
+  }
+  drawAssignPanel();
+}
+
+/* ============================= SLABS ADMIN ============================= */
+function renderSlabsAdmin(root){
+  root.innerHTML = '';
+  const groups = Object.keys(DB.slabs);
+  const newGroupPanel = el(`<div class="panel"><h3>Slab groups</h3>
+    <div class="hint">Different roles can follow different incentive slab tables. Assign a staff member's slab group under Staff.</div>
+    <div class="row" style="align-items:flex-end;">
+      <div class="field"><label>New slab group name</label><input id="ng-name" placeholder="e.g. Supervisors"></div>
+      <div class="field"><button class="btn brass" id="ng-add">Create group</button></div>
+    </div>
+  </div>`);
+  root.appendChild(newGroupPanel);
+  newGroupPanel.querySelector('#ng-add').onclick = async ()=>{
+    const name = newGroupPanel.querySelector('#ng-name').value.trim();
+    if(!name){ return; }
+    if(DB.slabs[name]){ alert('That group already exists.'); return; }
+    DB.slabs[name] = [
+      {minPct:100, incentivePct:100, label:'Target met or exceeded'},
+      {minPct:70, incentivePct:80, label:'Acceptable'},
+      {minPct:0, incentivePct:0, label:'Below threshold'}
+    ];
+    await saveKey(KEYS.slabs, DB.slabs);
+    renderShell();
+  };
+
+  groups.forEach(g=>{
+    const tiers = DB.slabs[g].slice().sort((a,b)=>b.minPct-a.minPct);
+    const panel = el(`<div class="panel"><h3>${g}${g==='Default'?' <span class="small-muted">(fallback)</span>':''}</h3>
+      <div class="hint">If weighted achievement % is at or above the minimum, that tier's incentive % applies.</div>
+    </div>`);
+    const table = el(`<table><thead><tr><th>Min achievement %</th><th>Incentive %</th><th>Label</th><th></th></tr></thead><tbody></tbody></table>`);
+    const tbody = table.querySelector('tbody');
+    tiers.forEach((t)=>{
+      const realIdx = DB.slabs[g].indexOf(t);
+      const tr = el(`<tr>
+        <td><input type="number" class="mono" style="width:90px;" value="${t.minPct}"></td>
+        <td><input type="number" class="mono" style="width:90px;" value="${t.incentivePct}"></td>
+        <td><input style="width:100%;" value="${t.label||''}"></td>
+        <td><button class="btn danger small">Remove</button></td>
+      </tr>`);
+      const inputs = tr.querySelectorAll('input');
+      inputs[0].onchange = async ()=>{ DB.slabs[g][realIdx].minPct = parseFloat(inputs[0].value)||0; await saveKey(KEYS.slabs, DB.slabs); };
+      inputs[1].onchange = async ()=>{ DB.slabs[g][realIdx].incentivePct = parseFloat(inputs[1].value)||0; await saveKey(KEYS.slabs, DB.slabs); };
+      inputs[2].onchange = async ()=>{ DB.slabs[g][realIdx].label = inputs[2].value; await saveKey(KEYS.slabs, DB.slabs); };
+      tr.querySelector('button').onclick = async ()=>{
+        DB.slabs[g] = DB.slabs[g].filter((x,i)=>i!==realIdx);
+        await saveKey(KEYS.slabs, DB.slabs);
+        renderShell();
+      };
+      tbody.appendChild(tr);
+    });
+    panel.appendChild(table);
+    const addTier = el(`<div class="flex-end" style="margin-top:10px;"><button class="btn ghost small">+ Add tier</button></div>`);
+    addTier.querySelector('button').onclick = async ()=>{
+      DB.slabs[g].push({minPct:0, incentivePct:0, label:'New tier'});
+      await saveKey(KEYS.slabs, DB.slabs);
+      renderShell();
+    };
+    panel.appendChild(addTier);
+    if(g!=='Default'){
+      const delGroup = el(`<div class="flex-end" style="margin-top:4px;"><button class="btn danger small">Delete group</button></div>`);
+      delGroup.querySelector('button').onclick = async ()=>{
+        if(!confirm(`Delete slab group "${g}"? Staff using it will fall back to Default.`)) return;
+        delete DB.slabs[g];
+        await saveKey(KEYS.slabs, DB.slabs);
+        renderShell();
+      };
+      panel.appendChild(delGroup);
+    }
+    root.appendChild(panel);
+  });
+}
+
+/* ============================= SETTINGS ADMIN ============================= */
+function renderSettingsAdmin(root){
+  root.innerHTML = '';
+  const workingDays = DB.config.workingDays || [1,2,3,4,5,6];
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const dailyCutoffHour = DB.config.dailyCutoffHour ?? 17;
+  const weeklyDueDay = DB.config.weeklyDueDay ?? 6; // Saturday
+  const weeklyCutoffHour = DB.config.weeklyCutoffHour ?? 13;
+  const monthlyCutoffHour = DB.config.monthlyCutoffHour ?? 17;
+
+  function hourLabel(h){
+    return h===0?'12:00 AM':h<12?`${h}:00 AM`:h===12?'12:00 PM':`${h-12}:00 PM`;
+  }
+  function hourOptions(selected){
+    let opts = '';
+    for(let h=0; h<24; h++){
+      opts += `<option value="${h}" ${h===selected?'selected':''}>${hourLabel(h)}</option>`;
+    }
+    return opts;
+  }
+
+  const orgPanel = el(`<div class="panel"><h3>Console settings</h3>
+    <div class="row">
+      <div class="field"><label>Organisation / plant name</label><input id="cfg-org" value="${DB.config.orgName}"></div>
+    </div>
+    <div class="flex-end"><button class="btn brass" id="cfg-org-save">Save</button></div>
+  </div>`);
+  root.appendChild(orgPanel);
+  orgPanel.querySelector('#cfg-org-save').onclick = async ()=>{
+    DB.config.orgName = orgPanel.querySelector('#cfg-org').value.trim() || DB.config.orgName;
+    await saveKey(KEYS.config, DB.config);
+    renderShell();
+  };
+
+  const dailyPanel = el(`<div class="panel"><h3>Daily KPI deadline</h3>
+    <div class="hint">Applies to every KPI set to Daily cadence. An entry becomes "Missed" once this cut-off passes with nothing recorded for that day.</div>
+    <div class="row">
+      <div class="field"><label>Due by</label><select id="cfg-daily-hour">${hourOptions(dailyCutoffHour)}</select></div>
+      <div class="field" style="flex:1;"><label>On which day</label><div style="padding-top:8px; font-size:13px;">the next <strong>working day</strong> after the entry's date</div></div>
+    </div>
+    <div class="field">
+      <label>Working days (defines what counts as the "next working day")</label>
+      <div class="row" id="cfg-workdays" style="gap:14px;">
+        ${dayNames.map((n,i)=>`<label style="display:flex; align-items:center; gap:5px; font-weight:400; font-size:13px; color:var(--ink);"><input type="checkbox" value="${i}" ${workingDays.includes(i)?'checked':''}> ${n}</label>`).join('')}
+      </div>
+    </div>
+    <div class="flex-end"><button class="btn brass" id="cfg-daily-save">Save daily rule</button></div>
+  </div>`);
+  root.appendChild(dailyPanel);
+  dailyPanel.querySelector('#cfg-daily-save').onclick = async ()=>{
+    DB.config.dailyCutoffHour = parseInt(dailyPanel.querySelector('#cfg-daily-hour').value);
+    DB.config.workingDays = Array.from(dailyPanel.querySelectorAll('#cfg-workdays input:checked')).map(c=>parseInt(c.value));
+    await saveKey(KEYS.config, DB.config);
+    renderShell();
+  };
+
+  const weeklyPanel = el(`<div class="panel"><h3>Weekly KPI deadline</h3>
+    <div class="hint">Applies to every KPI set to Weekly cadence. Weeks are anchored to this day of the week so the cycle stays continuous across months.</div>
+    <div class="row">
+      <div class="field"><label>Due day</label>
+        <select id="cfg-weekly-day">${dayNames.map((n,i)=>`<option value="${i}" ${i===weeklyDueDay?'selected':''}>${n}</option>`).join('')}</select>
+      </div>
+      <div class="field"><label>Due by</label><select id="cfg-weekly-hour">${hourOptions(weeklyCutoffHour)}</select></div>
+    </div>
+    <div class="flex-end"><button class="btn brass" id="cfg-weekly-save">Save weekly rule</button></div>
+  </div>`);
+  root.appendChild(weeklyPanel);
+  weeklyPanel.querySelector('#cfg-weekly-save').onclick = async ()=>{
+    DB.config.weeklyDueDay = parseInt(weeklyPanel.querySelector('#cfg-weekly-day').value);
+    DB.config.weeklyCutoffHour = parseInt(weeklyPanel.querySelector('#cfg-weekly-hour').value);
+    await saveKey(KEYS.config, DB.config);
+    renderShell();
+  };
+
+  const monthlyPanel = el(`<div class="panel"><h3>Monthly KPI deadline</h3>
+    <div class="hint">Applies to every KPI set to Monthly cadence — due in the month following the one being reported on.</div>
+    <div class="row">
+      <div class="field"><label>Due on day</label><input id="cfg-deadline" type="number" min="1" max="28" value="${DB.config.deadlineDay}" style="width:90px;"></div>
+      <div class="field"><label>of the following month, due by</label><select id="cfg-monthly-hour">${hourOptions(monthlyCutoffHour)}</select></div>
+    </div>
+    <div class="flex-end"><button class="btn brass" id="cfg-monthly-save">Save monthly rule</button></div>
+  </div>`);
+  root.appendChild(monthlyPanel);
+  monthlyPanel.querySelector('#cfg-monthly-save').onclick = async ()=>{
+    DB.config.deadlineDay = parseInt(monthlyPanel.querySelector('#cfg-deadline').value)||5;
+    DB.config.monthlyCutoffHour = parseInt(monthlyPanel.querySelector('#cfg-monthly-hour').value);
+    await saveKey(KEYS.config, DB.config);
+    renderShell();
+  };
+
+  const summaryPanel = el(`<div class="panel">
+    <div class="hint" style="margin:0;">
+      <strong>Deadline rules currently applied:</strong><br>
+      Daily — due ${hourLabel(dailyCutoffHour)} on the next working day.<br>
+      Weekly — due ${hourLabel(weeklyCutoffHour)} every ${dayNames[weeklyDueDay]}.<br>
+      Monthly — due ${hourLabel(monthlyCutoffHour)} on day ${DB.config.deadlineDay} of the following month.
+    </div>
+  </div>`);
+  root.appendChild(summaryPanel);
+
+  const accessPanel = el(`<div class="panel"><h3>Data entry access</h3>
+    <div class="hint">Choose who is allowed to enter daily/weekly/monthly actuals. Staff can always see their own achievement and incentive standing regardless of this setting — this only controls who can key in data.</div>
+    <div class="hint" style="color:var(--rust);">Note: with this hosted version, only the admin passcode can authenticate a write to the database — staff have no passcode of their own. "Admin and staff can both enter data" is kept here for reference but won't actually let staff save anything; use Admin only.</div>
+    <div class="row">
+      <div class="field">
+        <select id="cfg-entrymode">
+          <option value="shared" ${DB.config.entryMode!=='adminOnly'?'selected':''}>Admin and staff can both enter data</option>
+          <option value="adminOnly" ${DB.config.entryMode==='adminOnly'?'selected':''}>Admin only — staff are view-only</option>
+        </select>
+      </div>
+      <div class="field"><button class="btn brass" id="cfg-entrymode-save">Save</button></div>
+    </div>
+  </div>`);
+  root.appendChild(accessPanel);
+  accessPanel.querySelector('#cfg-entrymode-save').onclick = async ()=>{
+    DB.config.entryMode = accessPanel.querySelector('#cfg-entrymode').value;
+    await saveKey(KEYS.config, DB.config);
+    renderShell();
+  };
+
+  const pinPanel = el(`<div class="panel"><h3>Change admin passcode</h3>
+    <div class="row">
+      <div class="field"><label>New passcode</label><input id="cfg-pin" type="password" placeholder="New passcode"></div>
+      <div class="field"><button class="btn ghost" id="cfg-pin-save">Update passcode</button></div>
+    </div>
+  </div>`);
+  root.appendChild(pinPanel);
+  pinPanel.querySelector('#cfg-pin-save').onclick = async ()=>{
+    const pin = pinPanel.querySelector('#cfg-pin').value.trim();
+    if(!pin){ return; }
+    const oldPin = DB.config.adminPin;
+    DB.config.adminPin = pin;
+    const ok = await saveKey(KEYS.config, DB.config); // authenticates with adminAuthPin, still the OLD pin at this point
+    if(ok){
+      adminAuthPin = pin;
+      alert('Passcode updated.');
+    } else {
+      DB.config.adminPin = oldPin;
+      alert('Could not update the passcode — check your connection and try again.');
+    }
+  };
+}
+
+/* ============================= START ============================= */
+boot();
+</script>
+</body>
+</html>
