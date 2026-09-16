@@ -633,6 +633,7 @@ function renderLogin(){
         <p>Sign in to view your KPIs or manage the scheme.</p>
         <div class="toggle-row">
           <button class="active" data-mode="staff">Staff</button>
+          ${DB.config.dataEntryPin ? '<button data-mode="dataentry">Data Entry</button>' : ''}
           <button data-mode="admin">Manager / HOD</button>
         </div>
         <div id="login-body"></div>
@@ -658,6 +659,22 @@ function renderLogin(){
         session = {id:s.id, name:s.name, isAdmin:false, role:s.role, department:s.department, slabGroup:s.slabGroup||'Default'};
         currentView='dashboard';
         renderShell();
+      });
+    } else if(mode==='dataentry'){
+      body.innerHTML = `
+        <div class="field"><label>Data Entry passcode</label><input id="l-pin" type="password" placeholder="Passcode"></div>
+        <div class="flex-end"><button class="btn brass" id="l-go">Sign in</button></div>
+      `;
+      body.querySelector('#l-go').addEventListener('click', ()=>{
+        const pin = body.querySelector('#l-pin').value;
+        if(DB.config.dataEntryPin && pin === DB.config.dataEntryPin){
+          session = {id:'dataentry', name:DB.config.dataEntryName||'Data Entry Operator', isAdmin:false, isDataEntryOperator:true, role:'Data Entry Operator'};
+          adminAuthPin = pin; // sent with entries:* writes; backend accepts this in place of the admin PIN for entries only
+          currentView='entry';
+          renderShell();
+        } else {
+          alert('Incorrect passcode.');
+        }
       });
     } else {
       body.innerHTML = `
@@ -703,6 +720,12 @@ function navItems(){
       ['settings','Settings']
     ];
   }
+  if(session.isDataEntryOperator){
+    // Deliberately narrow: this role can only key in actuals for any staff
+    // member, selected by name — no access to staff/KPI/weightage/slab/
+    // settings admin, and no dashboards.
+    return [['entry','Data Entry']];
+  }
   const items = [['dashboard','My Performance']];
   if(DB.config.entryMode !== 'adminOnly') items.push(['entry','Update My KPIs']);
   return items;
@@ -724,7 +747,7 @@ async function renderShell(){
         <nav class="navlist" id="navlist"></nav>
         <div class="sidebar-foot">
           <div class="who">${session.name}</div>
-          <div>${session.isAdmin? 'Manager / HOD' : (session.role||'')}</div>
+          <div>${session.isAdmin? 'Manager / HOD' : session.isDataEntryOperator? 'Data Entry Operator' : (session.role||'')}</div>
           <button id="refresh-btn">Refresh data</button>
           <button id="logout-btn">Sign out</button>
         </div>
@@ -755,7 +778,7 @@ async function renderShell(){
   const titleMap = {
     dashboard: session.isAdmin ? ['Overview','Daily/weekly compliance, plus monthly achievement & incentive'] : ['My Performance','Your KPI achievement and incentive standing'],
     teamSummary: ['Team Summary','Overall team performance at a glance — printable for management'],
-    entry: session.isAdmin ? ['Monthly Entry','Record actuals for any staff member'] : ['Update My KPIs',"Enter this month's actuals for your assigned KPIs"],
+    entry: (session.isAdmin || session.isDataEntryOperator) ? ['Monthly Entry','Record actuals for any staff member'] : ['Update My KPIs',"Enter this month's actuals for your assigned KPIs"],
     staff: ['Staff','Add and manage staff records'],
     kpis: ['KPI Library','Define the KPIs used across the scheme'],
     assignments: ['Assignments & Weightage','Assign KPIs to each staff member with weightage and monthly targets'],
@@ -1436,9 +1459,10 @@ function renderEntry(root){
   root.innerHTML = '';
   root.appendChild(renderMonthPicker(()=>renderShell()));
 
-  let targetStaffId = session.isAdmin ? (adminEntryStaffId || (DB.staff[0]?.id)) : session.id;
+  const canPickAnyStaff = session.isAdmin || session.isDataEntryOperator;
+  let targetStaffId = canPickAnyStaff ? (adminEntryStaffId || (DB.staff[0]?.id)) : session.id;
 
-  if(session.isAdmin){
+  if(canPickAnyStaff){
     const picker = el(`<div class="panel"><div class="field" style="max-width:320px;">
       <label>Staff member</label>
       <select id="entry-staff">${DB.staff.map(s=>`<option value="${s.id}" ${s.id===targetStaffId?'selected':''}>${s.name} — ${s.role}</option>`).join('')}</select>
@@ -2162,6 +2186,38 @@ function renderSettingsAdmin(root){
     await saveKey(KEYS.config, DB.config);
     renderShell();
   };
+
+  const dataEntryPanel = el(`<div class="panel"><h3>Data Entry Operator access</h3>
+    <div class="hint">Gives one person a login that can record daily/weekly/monthly actuals for any staff member — nothing else. They won't see Staff, KPI Library, Assignments, Slabs, Settings or Reports. Leave the passcode blank and save to remove this access entirely.</div>
+    <div class="row">
+      <div class="field"><label>Display name</label><input id="cfg-de-name" placeholder="e.g. Kamal" value="${DB.config.dataEntryName||''}"></div>
+      <div class="field"><label>Passcode</label><input id="cfg-de-pin" type="password" placeholder="${DB.config.dataEntryPin?'Leave blank to keep current':'Set a passcode'}"></div>
+      <div class="field"><button class="btn brass" id="cfg-de-save">Save</button></div>
+    </div>
+    <div class="hint" style="margin-bottom:0;">${DB.config.dataEntryPin ? 'Data Entry access is currently <strong>enabled</strong>.' : 'Data Entry access is currently <strong>off</strong> — no login option shows until a passcode is set.'}</div>
+  </div>`);
+  root.appendChild(dataEntryPanel);
+  dataEntryPanel.querySelector('#cfg-de-save').onclick = async ()=>{
+    const name = dataEntryPanel.querySelector('#cfg-de-name').value.trim();
+    const pinInput = dataEntryPanel.querySelector('#cfg-de-pin').value.trim();
+    DB.config.dataEntryName = name;
+    if(pinInput){ DB.config.dataEntryPin = pinInput; }
+    const ok = await saveKey(KEYS.config, DB.config);
+    if(ok){ renderShell(); } else { alert('Could not save — check your connection and try again.'); }
+  };
+  // Separate, explicit way to switch access off, since an empty passcode
+  // field above means "keep current" rather than "clear it".
+  if(DB.config.dataEntryPin){
+    const removeRow = el(`<div class="panel"><div class="flex-end"><button class="btn danger small" id="cfg-de-remove">Remove Data Entry access</button></div></div>`);
+    root.appendChild(removeRow);
+    removeRow.querySelector('#cfg-de-remove').onclick = async ()=>{
+      if(!confirm('Remove Data Entry Operator access? Anyone currently signed in with that passcode will be unable to save further entries.')) return;
+      delete DB.config.dataEntryPin;
+      delete DB.config.dataEntryName;
+      const ok = await saveKey(KEYS.config, DB.config);
+      if(ok){ renderShell(); } else { alert('Could not save — check your connection and try again.'); }
+    };
+  }
 
   const pinPanel = el(`<div class="panel"><h3>Change admin passcode</h3>
     <div class="row">
