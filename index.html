@@ -322,6 +322,13 @@ async function apiGetAllCore(){
     return await res.json();
   }catch(e){ console.error('apiGetAllCore failed', e); return {}; }
 }
+async function apiGetMonth(mk){
+  try{
+    const res = await fetch(`${API_URL}?action=getMonth&month=${encodeURIComponent(mk)}`);
+    const data = await res.json();
+    return (data && data.value !== undefined) ? data.value : null;
+  }catch(e){ console.error('apiGetMonth failed', mk, e); return null; }
+}
 async function apiSet(key, valueObj){
   try{
     const res = await fetch(API_URL, {
@@ -350,9 +357,10 @@ async function loadAll(){
   DB.assignments = raw.assignments ? JSON.parse(raw.assignments) : {};
   DB.slabs = raw.slabs ? JSON.parse(raw.slabs) : {};
   // entries are NOT bulk-loaded here — see ensureEntriesLoaded() below.
-  // A single blob of every entry ever made would eventually exceed Google
-  // Sheets' ~50,000-character cell limit, so entries are stored and fetched
-  // one calendar month at a time instead (key "entries:YYYY-MM").
+  // They're stored one row per staff member per month (key
+  // "entries:YYYY-MM:<staffId>") rather than one blob for everyone, so no
+  // single Sheets cell can approach the ~50,000-character limit no matter
+  // how much data accumulates across staff and months.
 }
 
 /* ---------------- month-partitioned entries ---------------- */
@@ -366,7 +374,10 @@ function monthKeyFromPeriodKey(periodKey){
 async function ensureEntriesLoaded(monthDate){
   const mk = monthKey(monthDate);
   if(loadedEntryMonths.has(mk)) return;
-  const raw = await apiGet('entries:'+mk);
+  // Fetched pre-merged from the backend: every "entries:MK:<staffId>" shard
+  // for this month, plus any older un-sharded "entries:MK" row, combined
+  // into one object — see getEntriesForMonth_ in the Apps Script backend.
+  const raw = await apiGetMonth(mk);
   const parsed = raw ? JSON.parse(raw) : {};
   mergeEntries(parsed);
   loadedEntryMonths.add(mk);
@@ -382,26 +393,31 @@ function mergeEntries(partial){
   });
 }
 
-async function persistEntriesForMonth(mk){
+// Each staff member's entries for one month are written to their own row
+// ("entries:YYYY-MM:<staffId>"), never one blob shared by everyone — that
+// blob was what hit the Google Sheets ~50,000-character cell limit once
+// enough staff/KPIs had data in the same month. A single person's month of
+// daily/weekly actuals stays tiny by comparison, so this can't recur.
+async function persistEntriesForStaffMonth(staffId, mk){
   const subset = {};
-  Object.keys(DB.entries).forEach(staffId=>{
-    Object.keys(DB.entries[staffId]).forEach(kpiId=>{
-      Object.keys(DB.entries[staffId][kpiId]).forEach(periodKey=>{
-        if(monthKeyFromPeriodKey(periodKey)===mk){
-          if(!subset[staffId]) subset[staffId] = {};
-          if(!subset[staffId][kpiId]) subset[staffId][kpiId] = {};
-          subset[staffId][kpiId][periodKey] = DB.entries[staffId][kpiId][periodKey];
-        }
-      });
+  const staffEntries = DB.entries[staffId] || {};
+  Object.keys(staffEntries).forEach(kpiId=>{
+    Object.keys(staffEntries[kpiId]).forEach(periodKey=>{
+      if(monthKeyFromPeriodKey(periodKey)===mk){
+        if(!subset[staffId]) subset[staffId] = {};
+        if(!subset[staffId][kpiId]) subset[staffId][kpiId] = {};
+        subset[staffId][kpiId][periodKey] = staffEntries[kpiId][periodKey];
+      }
     });
   });
+  const key = `entries:${mk}:${staffId}`;
   const sizeCheck = JSON.stringify(subset);
   if(sizeCheck.length > 44000){
-    console.warn('entries:'+mk+' is '+sizeCheck.length+' characters — approaching the ~50,000-character Google Sheets cell limit. Older data for this month may need archiving soon.');
+    console.warn(key+' is '+sizeCheck.length+' characters — approaching the ~50,000-character Google Sheets cell limit.');
   }
-  const result = await apiSet('entries:'+mk, subset);
+  const result = await apiSet(key, subset);
   if(!result.ok){
-    alert('This entry was NOT saved.\n\nMonth: ' + mk + '\nReason: ' + (result.error || 'connection problem') + '\n\nPlease try again. If this keeps happening, tell your admin — do not assume it was saved.');
+    alert('This entry was NOT saved.\n\nStaff/month: ' + key + '\nReason: ' + (result.error || 'connection problem') + '\n\nPlease try again. If this keeps happening, tell your admin — do not assume it was saved.');
   }
   return result.ok;
 }
@@ -1649,7 +1665,7 @@ async function saveEntry(staffId, kpi, periodKey, dueDate, payload, completedDat
   });
   const mk = monthKeyFromPeriodKey(periodKey);
   loadedEntryMonths.add(mk); // this month's data is now authoritative in memory
-  return await persistEntriesForMonth(mk);
+  return await persistEntriesForStaffMonth(staffId, mk);
 }
 
 async function removeEntry(staffId, kpiId, periodKey){
@@ -1657,7 +1673,7 @@ async function removeEntry(staffId, kpiId, periodKey){
     delete DB.entries[staffId][kpiId][periodKey];
     const mk = monthKeyFromPeriodKey(periodKey);
     loadedEntryMonths.add(mk);
-    await persistEntriesForMonth(mk);
+    await persistEntriesForStaffMonth(staffId, mk);
   }
 }
 
