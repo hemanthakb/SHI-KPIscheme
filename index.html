@@ -330,12 +330,16 @@ async function apiSet(key, valueObj){
       body: JSON.stringify({action:'set', key, value: JSON.stringify(valueObj), secret: API_SECRET, adminPin: adminAuthPin})
     });
     const data = await res.json();
-    if(data && data.error){ console.error('apiSet error', key, data.error); return false; }
-    return !!(data && data.ok);
-  }catch(e){ console.error('apiSet failed', key, e); return false; }
+    if(data && data.error){ console.error('apiSet error', key, data.error); return {ok:false, error:data.error}; }
+    return {ok: !!(data && data.ok), error: null};
+  }catch(e){ console.error('apiSet failed', key, e); return {ok:false, error:String(e)}; }
 }
 async function saveKey(key, value){
-  return await apiSet(key, value);
+  const result = await apiSet(key, value);
+  if(!result.ok){
+    alert('Could not save to the database.\n\nKey: ' + key + '\nReason: ' + (result.error || 'connection problem') + '\n\nYour change was NOT saved. Please try again — if this keeps happening, tell your admin.');
+  }
+  return result.ok;
 }
 
 async function loadAll(){
@@ -391,7 +395,15 @@ async function persistEntriesForMonth(mk){
       });
     });
   });
-  return await apiSet('entries:'+mk, subset);
+  const sizeCheck = JSON.stringify(subset);
+  if(sizeCheck.length > 44000){
+    console.warn('entries:'+mk+' is '+sizeCheck.length+' characters — approaching the ~50,000-character Google Sheets cell limit. Older data for this month may need archiving soon.');
+  }
+  const result = await apiSet('entries:'+mk, subset);
+  if(!result.ok){
+    alert('This entry was NOT saved.\n\nMonth: ' + mk + '\nReason: ' + (result.error || 'connection problem') + '\n\nPlease try again. If this keeps happening, tell your admin — do not assume it was saved.');
+  }
+  return result.ok;
 }
 
 /* ---------------- seed defaults on first setup ---------------- */
@@ -2169,7 +2181,6 @@ function renderSettingsAdmin(root){
 
   const accessPanel = el(`<div class="panel"><h3>Data entry access</h3>
     <div class="hint">Choose who is allowed to enter daily/weekly/monthly actuals. Staff can always see their own achievement and incentive standing regardless of this setting — this only controls who can key in data.</div>
-    <div class="hint" style="color:var(--rust);">Note: with this hosted version, only the admin passcode can authenticate a write to the database — staff have no passcode of their own. "Admin and staff can both enter data" is kept here for reference but won't actually let staff save anything; use Admin only.</div>
     <div class="row">
       <div class="field">
         <select id="cfg-entrymode">
