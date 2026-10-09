@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KPI Incentive Console</title>
+<title>Performance Management System</title>
 <link rel="icon" id="favicon-link" type="image/jpeg" href="">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -254,7 +254,7 @@
 
 <script>
 /* =========================================================================
-   KPI INCENTIVE CONSOLE
+   Performance Management System
    Data lives in a Google Sheet, via the Apps Script Web App you deploy
    (see the accompanying kpi-incentive-backend.gs.txt). Fill in the two
    constants below after you deploy it — everyone who opens this HTML file
@@ -619,12 +619,12 @@ function renderSetup(){
     <div class="center-screen">
       <div class="login-card">
         <div class="mark">FIRST-TIME SETUP</div>
-        <h1>Set up your incentive console</h1>
+        <h1>Set up your Performance Management System</h1>
         <p>This runs once. You'll create the admin passcode used to manage KPIs, weightages and incentive slabs.</p>
         <div class="field"><label>Organisation / plant name</label><input id="s-org" placeholder="e.g. SHI Manufacturing"></div>
         <div class="field"><label>Admin name</label><input id="s-name" placeholder="Your name"></div>
         <div class="field"><label>Admin passcode</label><input id="s-pin" type="password" placeholder="Choose a passcode"></div>
-        <div class="flex-end"><button class="btn brass" id="s-go">Create console</button></div>
+        <div class="flex-end"><button class="btn brass" id="s-go">Create system</button></div>
       </div>
     </div>
   `);
@@ -657,7 +657,7 @@ function renderLogin(){
       <div class="login-card">
         <img src="${LOGO_DATA_URI}" alt="${DB.config.orgName.toUpperCase()} logo" style="width:52px; height:52px; object-fit:contain; border-radius:6px; margin-bottom:10px;">
         <div class="mark">${DB.config.orgName.toUpperCase()}</div>
-        <h1>KPI Incentive Console</h1>
+        <h1>Performance Management System</h1>
         <p>Sign in to view your KPIs or manage the scheme.</p>
         <div class="toggle-row">
           <button class="active" data-mode="staff">Staff</button>
@@ -770,7 +770,7 @@ async function renderShell(){
         <div class="brand">
           <img src="${LOGO_DATA_URI}" alt="${(DB.config.orgName||'').toUpperCase()} logo" style="width:40px; height:40px; object-fit:contain; border-radius:4px; margin-bottom:8px;">
           <div class="mark">${(DB.config.orgName||'').toUpperCase()}</div>
-          <h1>KPI Incentive Console</h1>
+          <h1>Performance Management System</h1>
         </div>
         <nav class="navlist" id="navlist"></nav>
         <div class="sidebar-foot">
@@ -812,7 +812,7 @@ async function renderShell(){
     assignments: ['Assignments & Weightage','Assign KPIs to each staff member with weightage and monthly targets'],
     slabs: ['Incentive Slabs','Map achievement % to incentive % — by slab group'],
     reports: ['Reports','Printable reports — staff, team summary, KPI library and assignments — with filters'],
-    settings: ['Settings','Deadline rules and console configuration']
+    settings: ['Settings','Deadline rules and system configuration']
   };
   wrap.querySelector('#view-title').textContent = titleMap[currentView][0];
   wrap.querySelector('#view-sub').textContent = titleMap[currentView][1];
@@ -2116,7 +2116,7 @@ function renderSettingsAdmin(root){
     return opts;
   }
 
-  const orgPanel = el(`<div class="panel"><h3>Console settings</h3>
+  const orgPanel = el(`<div class="panel"><h3>System settings</h3>
     <div class="row">
       <div class="field"><label>Organisation / plant name</label><input id="cfg-org" value="${DB.config.orgName}"></div>
     </div>
