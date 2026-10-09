@@ -1210,7 +1210,7 @@ function buildReportPanel(staffId, monthDate){
   const res = staffMonthlyResult(staffId, monthDate);
   const tier = incentiveForScore(staff?.slabGroup||'Default', res.overall);
   const panel = el(`<div class="panel" id="report-panel" style="max-width:900px;"></div>`);
-  panel.appendChild(reportLetterhead('Monthly KPI &amp; Incentive Report'));
+  panel.appendChild(reportLetterhead('Monthly Performance Report'));
   panel.appendChild(el(`<div class="row" style="margin-bottom:6px;">
     <div class="field" style="flex:1; min-width:150px;"><label>Staff member</label><div><strong>${staff?staff.name:'—'}</strong></div></div>
     <div class="field" style="flex:1; min-width:150px;"><label>Role</label><div>${staff?staff.role:'—'}</div></div>
